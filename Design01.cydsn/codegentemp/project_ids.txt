@@ -1,0 +1,8 @@
+C:\Users\amdev\Documents\PSoC Creator\RC Receiver Checker\Design01.cydsn\Design01.cyprj|4ba254cd-1b97-414b-9372-fd6517134154
+C:\Program Files (x86)\Cypress\PSoC Creator\4.2\PSoC Creator\psoc\content\default\CyAnnotationLibrary\CyAnnotationLibrary.cylib\CyAnnotationLibrary.cyprj|2c3a9c47-bce7-4393-95aa-47836df93f2e
+C:\Users\amdev\Documents\PSoC Creator\4.2\Downloads ( 4.2).cylib\Downloads ( 4.2).cyprj|ca2035cd-f1b8-4dce-952c-a8fc0adb13b8
+C:\Users\amdev\Documents\PSoC Creator\4.1\Downloads ( 4.1).cylib\Downloads ( 4.1).cyprj|213b5fd5-5866-4bf1-8a4e-045b255497d3
+C:\Program Files (x86)\Cypress\PSoC Creator\4.2\PSoC Creator\psoc\content\cycomponentlibraryupdates\CyComponentLibraryUpdates.cylib\CyComponentLibraryUpdates.cyprj|d5b91e1d-82ca-4351-b7e9-75eb5e4a75a7
+C:\Program Files (x86)\Cypress\PSoC Creator\4.2\PSoC Creator\psoc\content\cycomponentlibrary\CyComponentLibrary.cylib\CyComponentLibrary.cyprj|822c6206-2eb6-4e2d-8836-480c328063bd
+C:\Program Files (x86)\Cypress\PSoC Creator\4.2\PSoC Creator\psoc\content\cyprimitives\CyPrimitives.cylib\CyPrimitives.cyprj|e066fadf-c914-4aa5-b96d-022d9fd7bbd3
+C:\Users\amdev\Documents\PSoC Creator\RC Receiver Checker\Design02.cydsn\Design02.cyprj|625618f4-05de-4b8e-9eed-2e7ed0696369

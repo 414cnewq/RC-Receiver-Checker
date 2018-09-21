@@ -1,0 +1,2240 @@
+ARM GAS  C:\Temp\ccolbiUs.s 			page 1
+
+
+   1              		.syntax unified
+   2              		.cpu cortex-m0
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 0
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.syntax unified
+  15              		.file	"main.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.section	.text.PWM_Int,"ax",%progbits
+  20              		.align	2
+  21              		.global	PWM_Int
+  22              		.code	16
+  23              		.thumb_func
+  24              		.type	PWM_Int, %function
+  25              	PWM_Int:
+  26              	.LFB34:
+  27              		.file 1 "main.c"
+   1:main.c        **** /* ========================================
+   2:main.c        ****  *
+   3:main.c        ****  * Copyright YOUR COMPANY, THE YEAR
+   4:main.c        ****  * All Rights Reserved
+   5:main.c        ****  * UNPUBLISHED, LICENSED SOFTWARE.
+   6:main.c        ****  *
+   7:main.c        ****  * CONFIDENTIAL AND PROPRIETARY INFORMATION
+   8:main.c        ****  * WHICH IS THE PROPERTY OF your company.
+   9:main.c        ****  *
+  10:main.c        ****  * ========================================
+  11:main.c        **** */
+  12:main.c        **** #include "project.h"
+  13:main.c        **** #include <stdbool.h>
+  14:main.c        **** #include <stdio.h>
+  15:main.c        **** 
+  16:main.c        **** volatile uint16 PulseLength=0;  // The PWM pulse length of the video switching signal
+  17:main.c        **** int q=0;
+  18:main.c        **** float vbat = 5;
+  19:main.c        **** uint16 prevPulse=0, ppPulse;      // last two pulses
+  20:main.c        **** float dPulse, ddPulse;
+  21:main.c        **** 
+  22:main.c        **** uint32 tAccrued=0;
+  23:main.c        **** bool flatline=true;
+  24:main.c        **** 
+  25:main.c        **** 
+  26:main.c        **** uint16 low_time = 0;
+  27:main.c        **** uint16 nthTime=0;
+  28:main.c        **** uint16 override;
+  29:main.c        **** 
+  30:main.c        **** 
+ARM GAS  C:\Temp\ccolbiUs.s 			page 2
+
+
+  31:main.c        **** 
+  32:main.c        **** CY_ISR(ADC_ISR)
+  33:main.c        **** {
+  34:main.c        ****     
+  35:main.c        ****     int x=0,y =0;
+  36:main.c        ****     ADC_StartConvert(); 
+  37:main.c        ****     ADC_IsEndConversion(ADC_WAIT_FOR_RESULT);
+  38:main.c        ****     x = ADC_GetResult16(0);
+  39:main.c        ****     y = ADC_CountsTo_Volts(0,x);
+  40:main.c        ****     vbat = y * 5/3.3;
+  41:main.c        ****     nthTime++;
+  42:main.c        ****     Analog_Timer_ClearInterrupt(Analog_Timer_INTR_MASK_TC);
+  43:main.c        **** }
+  44:main.c        **** 
+  45:main.c        **** CY_ISR(PWM_Int)
+  46:main.c        **** {   
+  28              		.loc 1 46 0
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 0
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32 0000 10B5     		push	{r4, lr}
+  33              		.cfi_def_cfa_offset 8
+  34              		.cfi_offset 4, -8
+  35              		.cfi_offset 14, -4
+  47:main.c        ****     
+  48:main.c        ****     static bool firstTime = true; //Whether an instance is the first time the PWM int is called
+  49:main.c        ****     static int t0;
+  50:main.c        ****     override=6;
+  36              		.loc 1 50 0
+  37 0002 0622     		movs	r2, #6
+  38 0004 0A4B     		ldr	r3, .L2
+  39 0006 1A80     		strh	r2, [r3]
+  51:main.c        **** 
+  52:main.c        ****     q++;
+  40              		.loc 1 52 0
+  41 0008 0A4C     		ldr	r4, .L2+4
+  42 000a 2368     		ldr	r3, [r4]
+  43 000c 0133     		adds	r3, r3, #1
+  44 000e 2360     		str	r3, [r4]
+  53:main.c        ****     PulseLength = PWM_Timer_ReadCapture()-t0 ; // This will give the total time that the pulse has 
+  45              		.loc 1 53 0
+  46 0010 FFF7FEFF 		bl	PWM_Timer_ReadCapture
+  47              	.LVL0:
+  48 0014 80B2     		uxth	r0, r0
+  49 0016 A080     		strh	r0, [r4, #4]
+  54:main.c        ****     firstTime = true; //Next call will be first of new cycle
+  55:main.c        ****     PWM_Timer_Stop(); //Stop the timer
+  50              		.loc 1 55 0
+  51 0018 FFF7FEFF 		bl	PWM_Timer_Stop
+  52              	.LVL1:
+  56:main.c        ****     PWM_Timer_WriteCounter(0); //reset it
+  53              		.loc 1 56 0
+  54 001c 0020     		movs	r0, #0
+  55 001e FFF7FEFF 		bl	PWM_Timer_WriteCounter
+  56              	.LVL2:
+  57:main.c        ****     PWM_Timer_Start(); //restart the timer
+  57              		.loc 1 57 0
+ARM GAS  C:\Temp\ccolbiUs.s 			page 3
+
+
+  58 0022 FFF7FEFF 		bl	PWM_Timer_Start
+  59              	.LVL3:
+  58:main.c        **** 
+  59:main.c        ****     PWM_Timer_ClearInterrupt(PWM_Timer_INTR_MASK_CC_MATCH); //clear the interrupt on the timer
+  60              		.loc 1 59 0
+  61 0026 0220     		movs	r0, #2
+  62 0028 FFF7FEFF 		bl	PWM_Timer_ClearInterrupt
+  63              	.LVL4:
+  60:main.c        **** }
+  64              		.loc 1 60 0
+  65              		@ sp needed
+  66 002c 10BD     		pop	{r4, pc}
+  67              	.L3:
+  68 002e C046     		.align	2
+  69              	.L2:
+  70 0030 00000000 		.word	override
+  71 0034 00000000 		.word	.LANCHOR0
+  72              		.cfi_endproc
+  73              	.LFE34:
+  74              		.size	PWM_Int, .-PWM_Int
+  75              		.global	__aeabi_f2iz
+  76              		.global	__aeabi_i2d
+  77              		.global	__aeabi_ddiv
+  78              		.global	__aeabi_d2f
+  79              		.section	.text.ADC_ISR,"ax",%progbits
+  80              		.align	2
+  81              		.global	ADC_ISR
+  82              		.code	16
+  83              		.thumb_func
+  84              		.type	ADC_ISR, %function
+  85              	ADC_ISR:
+  86              	.LFB33:
+  33:main.c        ****     
+  87              		.loc 1 33 0
+  88              		.cfi_startproc
+  89              		@ args = 0, pretend = 0, frame = 0
+  90              		@ frame_needed = 0, uses_anonymous_args = 0
+  91 0000 10B5     		push	{r4, lr}
+  92              		.cfi_def_cfa_offset 8
+  93              		.cfi_offset 4, -8
+  94              		.cfi_offset 14, -4
+  95              	.LVL5:
+  36:main.c        ****     ADC_IsEndConversion(ADC_WAIT_FOR_RESULT);
+  96              		.loc 1 36 0
+  97 0002 FFF7FEFF 		bl	ADC_StartConvert
+  98              	.LVL6:
+  37:main.c        ****     x = ADC_GetResult16(0);
+  99              		.loc 1 37 0
+ 100 0006 0220     		movs	r0, #2
+ 101 0008 FFF7FEFF 		bl	ADC_IsEndConversion
+ 102              	.LVL7:
+  38:main.c        ****     y = ADC_CountsTo_Volts(0,x);
+ 103              		.loc 1 38 0
+ 104 000c 0020     		movs	r0, #0
+ 105 000e FFF7FEFF 		bl	ADC_GetResult16
+ 106              	.LVL8:
+ 107 0012 0100     		movs	r1, r0
+ARM GAS  C:\Temp\ccolbiUs.s 			page 4
+
+
+ 108              	.LVL9:
+  39:main.c        ****     vbat = y * 5/3.3;
+ 109              		.loc 1 39 0
+ 110 0014 0020     		movs	r0, #0
+ 111 0016 FFF7FEFF 		bl	ADC_CountsTo_Volts
+ 112              	.LVL10:
+ 113 001a FFF7FEFF 		bl	__aeabi_f2iz
+ 114              	.LVL11:
+  40:main.c        ****     nthTime++;
+ 115              		.loc 1 40 0
+ 116 001e 8300     		lsls	r3, r0, #2
+ 117 0020 1818     		adds	r0, r3, r0
+ 118              	.LVL12:
+ 119 0022 FFF7FEFF 		bl	__aeabi_i2d
+ 120              	.LVL13:
+ 121 0026 084A     		ldr	r2, .L5
+ 122 0028 084B     		ldr	r3, .L5+4
+ 123 002a FFF7FEFF 		bl	__aeabi_ddiv
+ 124              	.LVL14:
+ 125 002e FFF7FEFF 		bl	__aeabi_d2f
+ 126              	.LVL15:
+ 127 0032 074B     		ldr	r3, .L5+8
+ 128 0034 1860     		str	r0, [r3]
+  41:main.c        ****     Analog_Timer_ClearInterrupt(Analog_Timer_INTR_MASK_TC);
+ 129              		.loc 1 41 0
+ 130 0036 074A     		ldr	r2, .L5+12
+ 131 0038 D388     		ldrh	r3, [r2, #6]
+ 132 003a 0133     		adds	r3, r3, #1
+ 133 003c D380     		strh	r3, [r2, #6]
+  42:main.c        **** }
+ 134              		.loc 1 42 0
+ 135 003e 0120     		movs	r0, #1
+ 136 0040 FFF7FEFF 		bl	Analog_Timer_ClearInterrupt
+ 137              	.LVL16:
+  43:main.c        **** 
+ 138              		.loc 1 43 0
+ 139              		@ sp needed
+ 140 0044 10BD     		pop	{r4, pc}
+ 141              	.L6:
+ 142 0046 C046     		.align	2
+ 143              	.L5:
+ 144 0048 66666666 		.word	1717986918
+ 145 004c 66660A40 		.word	1074423398
+ 146 0050 00000000 		.word	.LANCHOR1
+ 147 0054 00000000 		.word	.LANCHOR0
+ 148              		.cfi_endproc
+ 149              	.LFE33:
+ 150              		.size	ADC_ISR, .-ADC_ISR
+ 151              		.section	.text.wdtISR,"ax",%progbits
+ 152              		.align	2
+ 153              		.global	wdtISR
+ 154              		.code	16
+ 155              		.thumb_func
+ 156              		.type	wdtISR, %function
+ 157              	wdtISR:
+ 158              	.LFB35:
+  61:main.c        **** 
+ARM GAS  C:\Temp\ccolbiUs.s 			page 5
+
+
+  62:main.c        **** int wdtIsrCnt = 0;
+  63:main.c        **** int nResets;
+  64:main.c        **** int timeRemain;
+  65:main.c        **** 
+  66:main.c        **** 
+  67:main.c        **** //ISR CALLED upon PSOC reset
+  68:main.c        **** //On second ISR Call: stop ISR and ensure 3 unhandled ISRS for reset
+  69:main.c        **** CY_ISR(wdtISR)
+  70:main.c        **** {
+ 159              		.loc 1 70 0
+ 160              		.cfi_startproc
+ 161              		@ args = 0, pretend = 0, frame = 0
+ 162              		@ frame_needed = 0, uses_anonymous_args = 0
+ 163 0000 10B5     		push	{r4, lr}
+ 164              		.cfi_def_cfa_offset 8
+ 165              		.cfi_offset 4, -8
+ 166              		.cfi_offset 14, -4
+  71:main.c        ****     if(wdtIsrCnt == 0)
+ 167              		.loc 1 71 0
+ 168 0002 074B     		ldr	r3, .L10
+ 169 0004 9B68     		ldr	r3, [r3, #8]
+ 170 0006 002B     		cmp	r3, #0
+ 171 0008 02D1     		bne	.L8
+  72:main.c        ****         WDT_ISR_ClearPending();
+ 172              		.loc 1 72 0
+ 173 000a FFF7FEFF 		bl	WDT_ISR_ClearPending
+ 174              	.LVL17:
+ 175 000e 01E0     		b	.L9
+ 176              	.L8:
+  73:main.c        ****     else
+  74:main.c        ****     {
+  75:main.c        ****         WDT_ISR_Stop();
+ 177              		.loc 1 75 0
+ 178 0010 FFF7FEFF 		bl	WDT_ISR_Stop
+ 179              	.LVL18:
+ 180              	.L9:
+  76:main.c        ****     }
+  77:main.c        ****     wdtIsrCnt++;
+ 181              		.loc 1 77 0
+ 182 0014 024A     		ldr	r2, .L10
+ 183 0016 9368     		ldr	r3, [r2, #8]
+ 184 0018 0133     		adds	r3, r3, #1
+ 185 001a 9360     		str	r3, [r2, #8]
+  78:main.c        **** }
+ 186              		.loc 1 78 0
+ 187              		@ sp needed
+ 188 001c 10BD     		pop	{r4, pc}
+ 189              	.L11:
+ 190 001e C046     		.align	2
+ 191              	.L10:
+ 192 0020 00000000 		.word	.LANCHOR0
+ 193              		.cfi_endproc
+ 194              	.LFE35:
+ 195              		.size	wdtISR, .-wdtISR
+ 196              		.section	.text.main,"ax",%progbits
+ 197              		.align	2
+ 198              		.global	main
+ARM GAS  C:\Temp\ccolbiUs.s 			page 6
+
+
+ 199              		.code	16
+ 200              		.thumb_func
+ 201              		.type	main, %function
+ 202              	main:
+ 203              	.LFB36:
+  79:main.c        **** 
+  80:main.c        **** int main(void)
+  81:main.c        **** {
+ 204              		.loc 1 81 0
+ 205              		.cfi_startproc
+ 206              		@ args = 0, pretend = 0, frame = 24
+ 207              		@ frame_needed = 0, uses_anonymous_args = 0
+ 208 0000 70B5     		push	{r4, r5, r6, lr}
+ 209              		.cfi_def_cfa_offset 16
+ 210              		.cfi_offset 4, -16
+ 211              		.cfi_offset 5, -12
+ 212              		.cfi_offset 6, -8
+ 213              		.cfi_offset 14, -4
+ 214 0002 8AB0     		sub	sp, sp, #40
+ 215              		.cfi_def_cfa_offset 56
+  82:main.c        ****     CySysWdtWriteMode(CY_SYS_WDT_COUNTER0, CY_SYS_WDT_MODE_INT_RESET);         // put WDT on Reset 
+ 216              		.loc 1 82 0
+ 217 0004 0321     		movs	r1, #3
+ 218 0006 0020     		movs	r0, #0
+ 219 0008 FFF7FEFF 		bl	CySysWdtSetMode
+ 220              	.LVL19:
+  83:main.c        ****     
+  84:main.c        ****     CySysWdtWriteMatch(CY_SYS_WDT_COUNTER0, ( (uint32) (5000*32000) / 1000) ); //1 second delay bef
+ 221              		.loc 1 84 0
+ 222 000c 2E49     		ldr	r1, .L20
+ 223 000e 0020     		movs	r0, #0
+ 224 0010 FFF7FEFF 		bl	CySysWdtSetMatch
+ 225              	.LVL20:
+  85:main.c        ****     CySysWdtWriteClearOnMatch( CY_SYS_WDT_COUNTER0, 1u );                      // Clear the counter
+ 226              		.loc 1 85 0
+ 227 0014 0121     		movs	r1, #1
+ 228 0016 0020     		movs	r0, #0
+ 229 0018 FFF7FEFF 		bl	CySysWdtSetClearOnMatch
+ 230              	.LVL21:
+  86:main.c        ****     //enable counter
+  87:main.c        ****     CySysWdtEnable(CY_SYS_WDT_COUNTER0_MASK); // Enable the watchdog counter
+ 231              		.loc 1 87 0
+ 232 001c 0120     		movs	r0, #1
+ 233 001e FFF7FEFF 		bl	CySysWdtEnable
+ 234              	.LVL22:
+ 235              	.L13:
+  88:main.c        ****     
+  89:main.c        ****     while(!CySysWdtReadEnabledStatus(CY_SYS_WDT_COUNTER0));  // pause until it is enabled
+ 236              		.loc 1 89 0 discriminator 1
+ 237 0022 0020     		movs	r0, #0
+ 238 0024 FFF7FEFF 		bl	CySysWdtGetEnabledStatus
+ 239              	.LVL23:
+ 240 0028 0028     		cmp	r0, #0
+ 241 002a FAD0     		beq	.L13
+  90:main.c        ****     PWM_Timer_Int_StartEx(PWM_Int);
+ 242              		.loc 1 90 0
+ 243 002c 2748     		ldr	r0, .L20+4
+ARM GAS  C:\Temp\ccolbiUs.s 			page 7
+
+
+ 244 002e FFF7FEFF 		bl	PWM_Timer_Int_StartEx
+ 245              	.LVL24:
+  91:main.c        ****    // ANALOG_INT_StartEx(ADC_ISR);
+  92:main.c        ****     CyGlobalIntEnable; /* Enable global interrupts. */
+ 246              		.loc 1 92 0
+ 247              		.syntax divided
+ 248              	@ 92 "main.c" 1
+ 249 0032 62B6     		CPSIE   i
+ 250              	@ 0 "" 2
+  93:main.c        **** 
+  94:main.c        ****     /* Place your initialization/startup code here (e.g. MyInst_Start()) */
+  95:main.c        ****     PWM_Timer_Start();
+ 251              		.loc 1 95 0
+ 252              		.thumb
+ 253              		.syntax unified
+ 254 0034 FFF7FEFF 		bl	PWM_Timer_Start
+ 255              	.LVL25:
+  96:main.c        ****     //Analog_Timer_Start();
+  97:main.c        ****     PWM_Timer_Pulse_Start();
+ 256              		.loc 1 97 0
+ 257 0038 FFF7FEFF 		bl	PWM_Timer_Pulse_Start
+ 258              	.LVL26:
+  98:main.c        ****     UART_Start();
+ 259              		.loc 1 98 0
+ 260 003c FFF7FEFF 		bl	UART_Start
+ 261              	.LVL27:
+  99:main.c        ****         
+ 100:main.c        ****     char data[20];
+ 101:main.c        ****   //  PinSelect_Write(0);
+ 102:main.c        ****     int i = 0;
+ 262              		.loc 1 102 0
+ 263 0040 0026     		movs	r6, #0
+ 264              	.LVL28:
+ 265              	.L16:
+ 266              	.LBB2:
+ 103:main.c        ****     for(;; i++)
+ 104:main.c        ****     {
+ 105:main.c        ****         /*
+ 106:main.c        ****         PinSelect_Write(i%6);
+ 107:main.c        ****         for(int q=0; q< (i%6 +1); q++)
+ 108:main.c        ****         {
+ 109:main.c        ****             Red_Write(1);
+ 110:main.c        ****             Green_Write(1);
+ 111:main.c        ****             Blue_Write(0);
+ 112:main.c        ****             CyDelay(500);
+ 113:main.c        ****             Blue_Write(1);
+ 114:main.c        ****             CyDelay(500);
+ 115:main.c        ****         }*/
+ 116:main.c        ****         
+ 117:main.c        ****         int Red_Val, Green_Val;
+ 118:main.c        ****         int Blue_Val = 0;
+ 119:main.c        ****         if(PulseLength < 4920 && PulseLength > 0) 
+ 267              		.loc 1 119 0
+ 268 0042 234B     		ldr	r3, .L20+8
+ 269 0044 9B88     		ldrh	r3, [r3, #4]
+ 270 0046 9BB2     		uxth	r3, r3
+ 271 0048 224A     		ldr	r2, .L20+12
+ARM GAS  C:\Temp\ccolbiUs.s 			page 8
+
+
+ 272 004a 9342     		cmp	r3, r2
+ 273 004c 06D8     		bhi	.L17
+ 274              		.loc 1 119 0 is_stmt 0 discriminator 1
+ 275 004e 204B     		ldr	r3, .L20+8
+ 276 0050 9B88     		ldrh	r3, [r3, #4]
+ 277 0052 9BB2     		uxth	r3, r3
+ 278 0054 002B     		cmp	r3, #0
+ 279 0056 03D1     		bne	.L18
+ 120:main.c        ****         {
+ 121:main.c        ****             Red_Val = 1;
+ 122:main.c        ****             Green_Val = 1;
+ 123:main.c        ****         }
+ 124:main.c        ****         else
+ 125:main.c        ****         {
+ 126:main.c        ****             Red_Val = 0;
+ 280              		.loc 1 126 0 is_stmt 1
+ 281 0058 0024     		movs	r4, #0
+ 282 005a 02E0     		b	.L14
+ 283              	.L17:
+ 284 005c 0024     		movs	r4, #0
+ 285 005e 00E0     		b	.L14
+ 286              	.L18:
+ 121:main.c        ****             Green_Val = 1;
+ 287              		.loc 1 121 0
+ 288 0060 0124     		movs	r4, #1
+ 289              	.L14:
+ 290              	.LVL29:
+ 127:main.c        ****             Green_Val = 1;
+ 128:main.c        ****         }
+ 129:main.c        ****         
+ 130:main.c        **** 
+ 131:main.c        ****         //Write out the camera feed to the Video Switch board
+ 132:main.c        ****         //feedNo = 0; //DEBUG WITH THIS FEED
+ 133:main.c        ****         snprintf(data,35,"DATA  %5d %5d %3d %4d\n    " , PulseLength, low_time, override ,i);
+ 291              		.loc 1 133 0
+ 292 0062 1B4A     		ldr	r2, .L20+8
+ 293 0064 9388     		ldrh	r3, [r2, #4]
+ 294 0066 9BB2     		uxth	r3, r3
+ 295 0068 0296     		str	r6, [sp, #8]
+ 296 006a 1B4D     		ldr	r5, .L20+16
+ 297 006c 2988     		ldrh	r1, [r5]
+ 298 006e 0191     		str	r1, [sp, #4]
+ 299 0070 9289     		ldrh	r2, [r2, #12]
+ 300 0072 0092     		str	r2, [sp]
+ 301 0074 194A     		ldr	r2, .L20+20
+ 302 0076 2321     		movs	r1, #35
+ 303 0078 05A8     		add	r0, sp, #20
+ 304 007a FFF7FEFF 		bl	snprintf
+ 305              	.LVL30:
+ 134:main.c        ****         UART_UartPutString(data);
+ 306              		.loc 1 134 0
+ 307 007e 05A8     		add	r0, sp, #20
+ 308 0080 FFF7FEFF 		bl	UART_UartPutString
+ 309              	.LVL31:
+ 135:main.c        ****         if(override-- <=0)
+ 310              		.loc 1 135 0
+ 311 0084 2B88     		ldrh	r3, [r5]
+ARM GAS  C:\Temp\ccolbiUs.s 			page 9
+
+
+ 312 0086 5A1E     		subs	r2, r3, #1
+ 313 0088 2A80     		strh	r2, [r5]
+ 314 008a 002B     		cmp	r3, #0
+ 315 008c 05D1     		bne	.L19
+ 136:main.c        ****         {
+ 137:main.c        ****             override = 0;
+ 316              		.loc 1 137 0
+ 317 008e 0022     		movs	r2, #0
+ 318 0090 114B     		ldr	r3, .L20+16
+ 319 0092 1A80     		strh	r2, [r3]
+ 320              	.LVL32:
+ 138:main.c        ****             Red_Val =1;
+ 139:main.c        ****             Green_Val=0;
+ 321              		.loc 1 139 0
+ 322 0094 0025     		movs	r5, #0
+ 138:main.c        ****             Red_Val =1;
+ 323              		.loc 1 138 0
+ 324 0096 0124     		movs	r4, #1
+ 325 0098 00E0     		b	.L15
+ 326              	.LVL33:
+ 327              	.L19:
+ 328 009a 0125     		movs	r5, #1
+ 329              	.LVL34:
+ 330              	.L15:
+ 140:main.c        ****         }
+ 141:main.c        ****         Red_Write(!Red_Val);  
+ 331              		.loc 1 141 0
+ 332 009c 6042     		rsbs	r0, r4, #0
+ 333 009e 6041     		adcs	r0, r0, r4
+ 334              	.LVL35:
+ 335 00a0 C0B2     		uxtb	r0, r0
+ 336 00a2 FFF7FEFF 		bl	Red_Write
+ 337              	.LVL36:
+ 142:main.c        ****         Green_Write(!Green_Val);
+ 338              		.loc 1 142 0
+ 339 00a6 6842     		rsbs	r0, r5, #0
+ 340 00a8 6841     		adcs	r0, r0, r5
+ 341              	.LVL37:
+ 342 00aa C0B2     		uxtb	r0, r0
+ 343 00ac FFF7FEFF 		bl	Green_Write
+ 344              	.LVL38:
+ 143:main.c        ****         Blue_Write(!Blue_Val);
+ 345              		.loc 1 143 0
+ 346 00b0 0120     		movs	r0, #1
+ 347 00b2 FFF7FEFF 		bl	Blue_Write
+ 348              	.LVL39:
+ 144:main.c        ****         CySysWdtResetCounters(CY_SYS_WDT_COUNTER0_RESET);
+ 349              		.loc 1 144 0
+ 350 00b6 0820     		movs	r0, #8
+ 351 00b8 FFF7FEFF 		bl	CySysWdtResetCounters
+ 352              	.LVL40:
+ 145:main.c        ****         CyDelay(300);
+ 353              		.loc 1 145 0
+ 354 00bc 9620     		movs	r0, #150
+ 355 00be 4000     		lsls	r0, r0, #1
+ 356 00c0 FFF7FEFF 		bl	CyDelay
+ 357              	.LVL41:
+ARM GAS  C:\Temp\ccolbiUs.s 			page 10
+
+
+ 358              	.LBE2:
+ 103:main.c        ****     {
+ 359              		.loc 1 103 0
+ 360 00c4 0136     		adds	r6, r6, #1
+ 361              	.LVL42:
+ 146:main.c        **** 
+ 147:main.c        ****     }
+ 362              		.loc 1 147 0
+ 363 00c6 BCE7     		b	.L16
+ 364              	.L21:
+ 365              		.align	2
+ 366              	.L20:
+ 367 00c8 00710200 		.word	160000
+ 368 00cc 00000000 		.word	PWM_Int
+ 369 00d0 00000000 		.word	.LANCHOR0
+ 370 00d4 37130000 		.word	4919
+ 371 00d8 00000000 		.word	override
+ 372 00dc 00000000 		.word	.LC7
+ 373              		.cfi_endproc
+ 374              	.LFE36:
+ 375              		.size	main, .-main
+ 376              		.comm	timeRemain,4,4
+ 377              		.comm	nResets,4,4
+ 378              		.global	wdtIsrCnt
+ 379              		.comm	override,2,2
+ 380              		.global	nthTime
+ 381              		.global	low_time
+ 382              		.global	flatline
+ 383              		.global	tAccrued
+ 384              		.comm	ddPulse,4,4
+ 385              		.comm	dPulse,4,4
+ 386              		.comm	ppPulse,2,2
+ 387              		.global	prevPulse
+ 388              		.global	vbat
+ 389              		.global	q
+ 390              		.global	PulseLength
+ 391              		.data
+ 392              		.align	2
+ 393              		.set	.LANCHOR1,. + 0
+ 394              		.type	vbat, %object
+ 395              		.size	vbat, 4
+ 396              	vbat:
+ 397 0000 0000A040 		.word	1084227584
+ 398              		.type	flatline, %object
+ 399              		.size	flatline, 1
+ 400              	flatline:
+ 401 0004 01       		.byte	1
+ 402              		.section	.rodata.str1.4,"aMS",%progbits,1
+ 403              		.align	2
+ 404              	.LC7:
+ 405 0000 44415441 		.ascii	"DATA  %5d %5d %3d %4d\012    \000"
+ 405      20202535 
+ 405      64202535 
+ 405      64202533 
+ 405      64202534 
+ 406              		.bss
+ 407              		.align	2
+ARM GAS  C:\Temp\ccolbiUs.s 			page 11
+
+
+ 408              		.set	.LANCHOR0,. + 0
+ 409              		.type	q, %object
+ 410              		.size	q, 4
+ 411              	q:
+ 412 0000 00000000 		.space	4
+ 413              		.type	PulseLength, %object
+ 414              		.size	PulseLength, 2
+ 415              	PulseLength:
+ 416 0004 0000     		.space	2
+ 417              		.type	nthTime, %object
+ 418              		.size	nthTime, 2
+ 419              	nthTime:
+ 420 0006 0000     		.space	2
+ 421              		.type	wdtIsrCnt, %object
+ 422              		.size	wdtIsrCnt, 4
+ 423              	wdtIsrCnt:
+ 424 0008 00000000 		.space	4
+ 425              		.type	low_time, %object
+ 426              		.size	low_time, 2
+ 427              	low_time:
+ 428 000c 0000     		.space	2
+ 429 000e 0000     		.space	2
+ 430              		.type	tAccrued, %object
+ 431              		.size	tAccrued, 4
+ 432              	tAccrued:
+ 433 0010 00000000 		.space	4
+ 434              		.type	prevPulse, %object
+ 435              		.size	prevPulse, 2
+ 436              	prevPulse:
+ 437 0014 0000     		.space	2
+ 438              		.text
+ 439              	.Letext0:
+ 440              		.file 2 "Generated_Source\\PSoC4/cytypes.h"
+ 441              		.file 3 "Generated_Source\\PSoC4/PWM_Timer.h"
+ 442              		.file 4 "Generated_Source\\PSoC4/ADC.h"
+ 443              		.file 5 "Generated_Source\\PSoC4/Analog_Timer.h"
+ 444              		.file 6 "Generated_Source\\PSoC4/WDT_ISR.h"
+ 445              		.file 7 "c:\\program files (x86)\\cypress\\psoc creator\\4.2\\psoc creator\\import\\gnu\\arm\\5.4.
+ 446              		.file 8 "Generated_Source\\PSoC4/UART_SPI_UART.h"
+ 447              		.file 9 "Generated_Source\\PSoC4/Red.h"
+ 448              		.file 10 "Generated_Source\\PSoC4/Green.h"
+ 449              		.file 11 "Generated_Source\\PSoC4/Blue.h"
+ 450              		.file 12 "Generated_Source\\PSoC4/CyLFClk.h"
+ 451              		.file 13 "Generated_Source\\PSoC4/CyLib.h"
+ 452              		.file 14 "Generated_Source\\PSoC4/PWM_Timer_Int.h"
+ 453              		.file 15 "Generated_Source\\PSoC4/PWM_Timer_Pulse.h"
+ 454              		.file 16 "Generated_Source\\PSoC4/UART.h"
+ 455              		.section	.debug_info,"",%progbits
+ 456              	.Ldebug_info0:
+ 457 0000 9B050000 		.4byte	0x59b
+ 458 0004 0400     		.2byte	0x4
+ 459 0006 00000000 		.4byte	.Ldebug_abbrev0
+ 460 000a 04       		.byte	0x4
+ 461 000b 01       		.uleb128 0x1
+ 462 000c E5000000 		.4byte	.LASF66
+ 463 0010 0C       		.byte	0xc
+ 464 0011 76030000 		.4byte	.LASF67
+ARM GAS  C:\Temp\ccolbiUs.s 			page 12
+
+
+ 465 0015 D3020000 		.4byte	.LASF68
+ 466 0019 00000000 		.4byte	.Ldebug_ranges0+0
+ 467 001d 00000000 		.4byte	0
+ 468 0021 00000000 		.4byte	.Ldebug_line0
+ 469 0025 02       		.uleb128 0x2
+ 470 0026 01       		.byte	0x1
+ 471 0027 06       		.byte	0x6
+ 472 0028 54020000 		.4byte	.LASF0
+ 473 002c 02       		.uleb128 0x2
+ 474 002d 01       		.byte	0x1
+ 475 002e 08       		.byte	0x8
+ 476 002f 46020000 		.4byte	.LASF1
+ 477 0033 02       		.uleb128 0x2
+ 478 0034 02       		.byte	0x2
+ 479 0035 05       		.byte	0x5
+ 480 0036 9B010000 		.4byte	.LASF2
+ 481 003a 02       		.uleb128 0x2
+ 482 003b 02       		.byte	0x2
+ 483 003c 07       		.byte	0x7
+ 484 003d 41030000 		.4byte	.LASF3
+ 485 0041 02       		.uleb128 0x2
+ 486 0042 04       		.byte	0x4
+ 487 0043 05       		.byte	0x5
+ 488 0044 D9010000 		.4byte	.LASF4
+ 489 0048 02       		.uleb128 0x2
+ 490 0049 04       		.byte	0x4
+ 491 004a 07       		.byte	0x7
+ 492 004b 7D030000 		.4byte	.LASF5
+ 493 004f 02       		.uleb128 0x2
+ 494 0050 08       		.byte	0x8
+ 495 0051 05       		.byte	0x5
+ 496 0052 CB010000 		.4byte	.LASF6
+ 497 0056 02       		.uleb128 0x2
+ 498 0057 08       		.byte	0x8
+ 499 0058 07       		.byte	0x7
+ 500 0059 60020000 		.4byte	.LASF7
+ 501 005d 03       		.uleb128 0x3
+ 502 005e 04       		.byte	0x4
+ 503 005f 05       		.byte	0x5
+ 504 0060 696E7400 		.ascii	"int\000"
+ 505 0064 02       		.uleb128 0x2
+ 506 0065 04       		.byte	0x4
+ 507 0066 07       		.byte	0x7
+ 508 0067 77020000 		.4byte	.LASF8
+ 509 006b 04       		.uleb128 0x4
+ 510 006c 68030000 		.4byte	.LASF9
+ 511 0070 02       		.byte	0x2
+ 512 0071 E501     		.2byte	0x1e5
+ 513 0073 3A000000 		.4byte	0x3a
+ 514 0077 04       		.uleb128 0x4
+ 515 0078 6F030000 		.4byte	.LASF10
+ 516 007c 02       		.byte	0x2
+ 517 007d E601     		.2byte	0x1e6
+ 518 007f 48000000 		.4byte	0x48
+ 519 0083 02       		.uleb128 0x2
+ 520 0084 04       		.byte	0x4
+ 521 0085 04       		.byte	0x4
+ARM GAS  C:\Temp\ccolbiUs.s 			page 13
+
+
+ 522 0086 BD010000 		.4byte	.LASF11
+ 523 008a 02       		.uleb128 0x2
+ 524 008b 08       		.byte	0x8
+ 525 008c 04       		.byte	0x4
+ 526 008d 8F030000 		.4byte	.LASF12
+ 527 0091 02       		.uleb128 0x2
+ 528 0092 01       		.byte	0x1
+ 529 0093 08       		.byte	0x8
+ 530 0094 1C030000 		.4byte	.LASF13
+ 531 0098 05       		.uleb128 0x5
+ 532 0099 6B000000 		.4byte	0x6b
+ 533 009d 02       		.uleb128 0x2
+ 534 009e 08       		.byte	0x8
+ 535 009f 04       		.byte	0x4
+ 536 00a0 3A020000 		.4byte	.LASF14
+ 537 00a4 02       		.uleb128 0x2
+ 538 00a5 04       		.byte	0x4
+ 539 00a6 07       		.byte	0x7
+ 540 00a7 82000000 		.4byte	.LASF15
+ 541 00ab 06       		.uleb128 0x6
+ 542 00ac C3010000 		.4byte	.LASF18
+ 543 00b0 01       		.byte	0x1
+ 544 00b1 2D       		.byte	0x2d
+ 545 00b2 00000000 		.4byte	.LFB34
+ 546 00b6 38000000 		.4byte	.LFE34-.LFB34
+ 547 00ba 01       		.uleb128 0x1
+ 548 00bb 9C       		.byte	0x9c
+ 549 00bc 13010000 		.4byte	0x113
+ 550 00c0 07       		.uleb128 0x7
+ 551 00c1 73010000 		.4byte	.LASF16
+ 552 00c5 01       		.byte	0x1
+ 553 00c6 30       		.byte	0x30
+ 554 00c7 13010000 		.4byte	0x113
+ 555 00cb 08       		.uleb128 0x8
+ 556 00cc 743000   		.ascii	"t0\000"
+ 557 00cf 01       		.byte	0x1
+ 558 00d0 31       		.byte	0x31
+ 559 00d1 1A010000 		.4byte	0x11a
+ 560 00d5 09       		.uleb128 0x9
+ 561 00d6 14000000 		.4byte	.LVL0
+ 562 00da 6D040000 		.4byte	0x46d
+ 563 00de 09       		.uleb128 0x9
+ 564 00df 1C000000 		.4byte	.LVL1
+ 565 00e3 79040000 		.4byte	0x479
+ 566 00e7 0A       		.uleb128 0xa
+ 567 00e8 22000000 		.4byte	.LVL2
+ 568 00ec 85040000 		.4byte	0x485
+ 569 00f0 FA000000 		.4byte	0xfa
+ 570 00f4 0B       		.uleb128 0xb
+ 571 00f5 01       		.uleb128 0x1
+ 572 00f6 50       		.byte	0x50
+ 573 00f7 01       		.uleb128 0x1
+ 574 00f8 30       		.byte	0x30
+ 575 00f9 00       		.byte	0
+ 576 00fa 09       		.uleb128 0x9
+ 577 00fb 26000000 		.4byte	.LVL3
+ 578 00ff 91040000 		.4byte	0x491
+ARM GAS  C:\Temp\ccolbiUs.s 			page 14
+
+
+ 579 0103 0C       		.uleb128 0xc
+ 580 0104 2C000000 		.4byte	.LVL4
+ 581 0108 9D040000 		.4byte	0x49d
+ 582 010c 0B       		.uleb128 0xb
+ 583 010d 01       		.uleb128 0x1
+ 584 010e 50       		.byte	0x50
+ 585 010f 01       		.uleb128 0x1
+ 586 0110 32       		.byte	0x32
+ 587 0111 00       		.byte	0
+ 588 0112 00       		.byte	0
+ 589 0113 02       		.uleb128 0x2
+ 590 0114 01       		.byte	0x1
+ 591 0115 02       		.byte	0x2
+ 592 0116 54030000 		.4byte	.LASF17
+ 593 011a 0D       		.uleb128 0xd
+ 594 011b 5D000000 		.4byte	0x5d
+ 595 011f 0E       		.uleb128 0xe
+ 596 0120 32020000 		.4byte	.LASF19
+ 597 0124 01       		.byte	0x1
+ 598 0125 20       		.byte	0x20
+ 599 0126 00000000 		.4byte	.LFB33
+ 600 012a 58000000 		.4byte	.LFE33-.LFB33
+ 601 012e 01       		.uleb128 0x1
+ 602 012f 9C       		.byte	0x9c
+ 603 0130 A0010000 		.4byte	0x1a0
+ 604 0134 0F       		.uleb128 0xf
+ 605 0135 7800     		.ascii	"x\000"
+ 606 0137 01       		.byte	0x1
+ 607 0138 23       		.byte	0x23
+ 608 0139 5D000000 		.4byte	0x5d
+ 609 013d 00000000 		.4byte	.LLST0
+ 610 0141 0F       		.uleb128 0xf
+ 611 0142 7900     		.ascii	"y\000"
+ 612 0144 01       		.byte	0x1
+ 613 0145 23       		.byte	0x23
+ 614 0146 5D000000 		.4byte	0x5d
+ 615 014a 25000000 		.4byte	.LLST1
+ 616 014e 09       		.uleb128 0x9
+ 617 014f 06000000 		.4byte	.LVL6
+ 618 0153 A9040000 		.4byte	0x4a9
+ 619 0157 0A       		.uleb128 0xa
+ 620 0158 0C000000 		.4byte	.LVL7
+ 621 015c B4040000 		.4byte	0x4b4
+ 622 0160 6A010000 		.4byte	0x16a
+ 623 0164 0B       		.uleb128 0xb
+ 624 0165 01       		.uleb128 0x1
+ 625 0166 50       		.byte	0x50
+ 626 0167 01       		.uleb128 0x1
+ 627 0168 32       		.byte	0x32
+ 628 0169 00       		.byte	0
+ 629 016a 0A       		.uleb128 0xa
+ 630 016b 12000000 		.4byte	.LVL8
+ 631 016f BF040000 		.4byte	0x4bf
+ 632 0173 7D010000 		.4byte	0x17d
+ 633 0177 0B       		.uleb128 0xb
+ 634 0178 01       		.uleb128 0x1
+ 635 0179 50       		.byte	0x50
+ARM GAS  C:\Temp\ccolbiUs.s 			page 15
+
+
+ 636 017a 01       		.uleb128 0x1
+ 637 017b 30       		.byte	0x30
+ 638 017c 00       		.byte	0
+ 639 017d 0A       		.uleb128 0xa
+ 640 017e 1A000000 		.4byte	.LVL10
+ 641 0182 CA040000 		.4byte	0x4ca
+ 642 0186 90010000 		.4byte	0x190
+ 643 018a 0B       		.uleb128 0xb
+ 644 018b 01       		.uleb128 0x1
+ 645 018c 50       		.byte	0x50
+ 646 018d 01       		.uleb128 0x1
+ 647 018e 30       		.byte	0x30
+ 648 018f 00       		.byte	0
+ 649 0190 0C       		.uleb128 0xc
+ 650 0191 44000000 		.4byte	.LVL16
+ 651 0195 D5040000 		.4byte	0x4d5
+ 652 0199 0B       		.uleb128 0xb
+ 653 019a 01       		.uleb128 0x1
+ 654 019b 50       		.byte	0x50
+ 655 019c 01       		.uleb128 0x1
+ 656 019d 31       		.byte	0x31
+ 657 019e 00       		.byte	0
+ 658 019f 00       		.byte	0
+ 659 01a0 06       		.uleb128 0x6
+ 660 01a1 AF000000 		.4byte	.LASF20
+ 661 01a5 01       		.byte	0x1
+ 662 01a6 45       		.byte	0x45
+ 663 01a7 00000000 		.4byte	.LFB35
+ 664 01ab 24000000 		.4byte	.LFE35-.LFB35
+ 665 01af 01       		.uleb128 0x1
+ 666 01b0 9C       		.byte	0x9c
+ 667 01b1 C8010000 		.4byte	0x1c8
+ 668 01b5 09       		.uleb128 0x9
+ 669 01b6 0E000000 		.4byte	.LVL17
+ 670 01ba E1040000 		.4byte	0x4e1
+ 671 01be 09       		.uleb128 0x9
+ 672 01bf 14000000 		.4byte	.LVL18
+ 673 01c3 EC040000 		.4byte	0x4ec
+ 674 01c7 00       		.byte	0
+ 675 01c8 10       		.uleb128 0x10
+ 676 01c9 AA000000 		.4byte	.LASF69
+ 677 01cd 01       		.byte	0x1
+ 678 01ce 50       		.byte	0x50
+ 679 01cf 5D000000 		.4byte	0x5d
+ 680 01d3 00000000 		.4byte	.LFB36
+ 681 01d7 E0000000 		.4byte	.LFE36-.LFB36
+ 682 01db 01       		.uleb128 0x1
+ 683 01dc 9C       		.byte	0x9c
+ 684 01dd 60030000 		.4byte	0x360
+ 685 01e1 11       		.uleb128 0x11
+ 686 01e2 5A030000 		.4byte	.LASF21
+ 687 01e6 01       		.byte	0x1
+ 688 01e7 64       		.byte	0x64
+ 689 01e8 60030000 		.4byte	0x360
+ 690 01ec 02       		.uleb128 0x2
+ 691 01ed 91       		.byte	0x91
+ 692 01ee 5C       		.sleb128 -36
+ARM GAS  C:\Temp\ccolbiUs.s 			page 16
+
+
+ 693 01ef 0F       		.uleb128 0xf
+ 694 01f0 6900     		.ascii	"i\000"
+ 695 01f2 01       		.byte	0x1
+ 696 01f3 66       		.byte	0x66
+ 697 01f4 5D000000 		.4byte	0x5d
+ 698 01f8 44000000 		.4byte	.LLST2
+ 699 01fc 12       		.uleb128 0x12
+ 700 01fd 42000000 		.4byte	.LBB2
+ 701 0201 82000000 		.4byte	.LBE2-.LBB2
+ 702 0205 BB020000 		.4byte	0x2bb
+ 703 0209 13       		.uleb128 0x13
+ 704 020a D3030000 		.4byte	.LASF22
+ 705 020e 01       		.byte	0x1
+ 706 020f 75       		.byte	0x75
+ 707 0210 5D000000 		.4byte	0x5d
+ 708 0214 63000000 		.4byte	.LLST3
+ 709 0218 13       		.uleb128 0x13
+ 710 0219 E2010000 		.4byte	.LASF23
+ 711 021d 01       		.byte	0x1
+ 712 021e 75       		.byte	0x75
+ 713 021f 5D000000 		.4byte	0x5d
+ 714 0223 8D000000 		.4byte	.LLST4
+ 715 0227 14       		.uleb128 0x14
+ 716 0228 94020000 		.4byte	.LASF24
+ 717 022c 01       		.byte	0x1
+ 718 022d 76       		.byte	0x76
+ 719 022e 5D000000 		.4byte	0x5d
+ 720 0232 00       		.byte	0
+ 721 0233 0A       		.uleb128 0xa
+ 722 0234 7E000000 		.4byte	.LVL30
+ 723 0238 F7040000 		.4byte	0x4f7
+ 724 023c 5D020000 		.4byte	0x25d
+ 725 0240 0B       		.uleb128 0xb
+ 726 0241 01       		.uleb128 0x1
+ 727 0242 50       		.byte	0x50
+ 728 0243 02       		.uleb128 0x2
+ 729 0244 91       		.byte	0x91
+ 730 0245 5C       		.sleb128 -36
+ 731 0246 0B       		.uleb128 0xb
+ 732 0247 01       		.uleb128 0x1
+ 733 0248 51       		.byte	0x51
+ 734 0249 02       		.uleb128 0x2
+ 735 024a 08       		.byte	0x8
+ 736 024b 23       		.byte	0x23
+ 737 024c 0B       		.uleb128 0xb
+ 738 024d 01       		.uleb128 0x1
+ 739 024e 52       		.byte	0x52
+ 740 024f 05       		.uleb128 0x5
+ 741 0250 03       		.byte	0x3
+ 742 0251 00000000 		.4byte	.LC7
+ 743 0255 0B       		.uleb128 0xb
+ 744 0256 02       		.uleb128 0x2
+ 745 0257 7D       		.byte	0x7d
+ 746 0258 08       		.sleb128 8
+ 747 0259 02       		.uleb128 0x2
+ 748 025a 76       		.byte	0x76
+ 749 025b 00       		.sleb128 0
+ARM GAS  C:\Temp\ccolbiUs.s 			page 17
+
+
+ 750 025c 00       		.byte	0
+ 751 025d 0A       		.uleb128 0xa
+ 752 025e 84000000 		.4byte	.LVL31
+ 753 0262 02050000 		.4byte	0x502
+ 754 0266 71020000 		.4byte	0x271
+ 755 026a 0B       		.uleb128 0xb
+ 756 026b 01       		.uleb128 0x1
+ 757 026c 50       		.byte	0x50
+ 758 026d 02       		.uleb128 0x2
+ 759 026e 91       		.byte	0x91
+ 760 026f 5C       		.sleb128 -36
+ 761 0270 00       		.byte	0
+ 762 0271 09       		.uleb128 0x9
+ 763 0272 A6000000 		.4byte	.LVL36
+ 764 0276 0E050000 		.4byte	0x50e
+ 765 027a 09       		.uleb128 0x9
+ 766 027b B0000000 		.4byte	.LVL38
+ 767 027f 19050000 		.4byte	0x519
+ 768 0283 0A       		.uleb128 0xa
+ 769 0284 B6000000 		.4byte	.LVL39
+ 770 0288 24050000 		.4byte	0x524
+ 771 028c 96020000 		.4byte	0x296
+ 772 0290 0B       		.uleb128 0xb
+ 773 0291 01       		.uleb128 0x1
+ 774 0292 50       		.byte	0x50
+ 775 0293 01       		.uleb128 0x1
+ 776 0294 31       		.byte	0x31
+ 777 0295 00       		.byte	0
+ 778 0296 0A       		.uleb128 0xa
+ 779 0297 BC000000 		.4byte	.LVL40
+ 780 029b 2F050000 		.4byte	0x52f
+ 781 029f A9020000 		.4byte	0x2a9
+ 782 02a3 0B       		.uleb128 0xb
+ 783 02a4 01       		.uleb128 0x1
+ 784 02a5 50       		.byte	0x50
+ 785 02a6 01       		.uleb128 0x1
+ 786 02a7 38       		.byte	0x38
+ 787 02a8 00       		.byte	0
+ 788 02a9 0C       		.uleb128 0xc
+ 789 02aa C4000000 		.4byte	.LVL41
+ 790 02ae 3A050000 		.4byte	0x53a
+ 791 02b2 0B       		.uleb128 0xb
+ 792 02b3 01       		.uleb128 0x1
+ 793 02b4 50       		.byte	0x50
+ 794 02b5 03       		.uleb128 0x3
+ 795 02b6 0A       		.byte	0xa
+ 796 02b7 2C01     		.2byte	0x12c
+ 797 02b9 00       		.byte	0
+ 798 02ba 00       		.byte	0
+ 799 02bb 0A       		.uleb128 0xa
+ 800 02bc 0C000000 		.4byte	.LVL19
+ 801 02c0 45050000 		.4byte	0x545
+ 802 02c4 D3020000 		.4byte	0x2d3
+ 803 02c8 0B       		.uleb128 0xb
+ 804 02c9 01       		.uleb128 0x1
+ 805 02ca 50       		.byte	0x50
+ 806 02cb 01       		.uleb128 0x1
+ARM GAS  C:\Temp\ccolbiUs.s 			page 18
+
+
+ 807 02cc 30       		.byte	0x30
+ 808 02cd 0B       		.uleb128 0xb
+ 809 02ce 01       		.uleb128 0x1
+ 810 02cf 51       		.byte	0x51
+ 811 02d0 01       		.uleb128 0x1
+ 812 02d1 33       		.byte	0x33
+ 813 02d2 00       		.byte	0
+ 814 02d3 0A       		.uleb128 0xa
+ 815 02d4 14000000 		.4byte	.LVL20
+ 816 02d8 50050000 		.4byte	0x550
+ 817 02dc EF020000 		.4byte	0x2ef
+ 818 02e0 0B       		.uleb128 0xb
+ 819 02e1 01       		.uleb128 0x1
+ 820 02e2 50       		.byte	0x50
+ 821 02e3 01       		.uleb128 0x1
+ 822 02e4 30       		.byte	0x30
+ 823 02e5 0B       		.uleb128 0xb
+ 824 02e6 01       		.uleb128 0x1
+ 825 02e7 51       		.byte	0x51
+ 826 02e8 05       		.uleb128 0x5
+ 827 02e9 0C       		.byte	0xc
+ 828 02ea 00710200 		.4byte	0x27100
+ 829 02ee 00       		.byte	0
+ 830 02ef 0A       		.uleb128 0xa
+ 831 02f0 1C000000 		.4byte	.LVL21
+ 832 02f4 5B050000 		.4byte	0x55b
+ 833 02f8 07030000 		.4byte	0x307
+ 834 02fc 0B       		.uleb128 0xb
+ 835 02fd 01       		.uleb128 0x1
+ 836 02fe 50       		.byte	0x50
+ 837 02ff 01       		.uleb128 0x1
+ 838 0300 30       		.byte	0x30
+ 839 0301 0B       		.uleb128 0xb
+ 840 0302 01       		.uleb128 0x1
+ 841 0303 51       		.byte	0x51
+ 842 0304 01       		.uleb128 0x1
+ 843 0305 31       		.byte	0x31
+ 844 0306 00       		.byte	0
+ 845 0307 0A       		.uleb128 0xa
+ 846 0308 22000000 		.4byte	.LVL22
+ 847 030c 66050000 		.4byte	0x566
+ 848 0310 1A030000 		.4byte	0x31a
+ 849 0314 0B       		.uleb128 0xb
+ 850 0315 01       		.uleb128 0x1
+ 851 0316 50       		.byte	0x50
+ 852 0317 01       		.uleb128 0x1
+ 853 0318 31       		.byte	0x31
+ 854 0319 00       		.byte	0
+ 855 031a 0A       		.uleb128 0xa
+ 856 031b 28000000 		.4byte	.LVL23
+ 857 031f 71050000 		.4byte	0x571
+ 858 0323 2D030000 		.4byte	0x32d
+ 859 0327 0B       		.uleb128 0xb
+ 860 0328 01       		.uleb128 0x1
+ 861 0329 50       		.byte	0x50
+ 862 032a 01       		.uleb128 0x1
+ 863 032b 30       		.byte	0x30
+ARM GAS  C:\Temp\ccolbiUs.s 			page 19
+
+
+ 864 032c 00       		.byte	0
+ 865 032d 0A       		.uleb128 0xa
+ 866 032e 32000000 		.4byte	.LVL24
+ 867 0332 7C050000 		.4byte	0x57c
+ 868 0336 44030000 		.4byte	0x344
+ 869 033a 0B       		.uleb128 0xb
+ 870 033b 01       		.uleb128 0x1
+ 871 033c 50       		.byte	0x50
+ 872 033d 05       		.uleb128 0x5
+ 873 033e 03       		.byte	0x3
+ 874 033f 00000000 		.4byte	PWM_Int
+ 875 0343 00       		.byte	0
+ 876 0344 09       		.uleb128 0x9
+ 877 0345 38000000 		.4byte	.LVL25
+ 878 0349 91040000 		.4byte	0x491
+ 879 034d 09       		.uleb128 0x9
+ 880 034e 3C000000 		.4byte	.LVL26
+ 881 0352 87050000 		.4byte	0x587
+ 882 0356 09       		.uleb128 0x9
+ 883 0357 40000000 		.4byte	.LVL27
+ 884 035b 93050000 		.4byte	0x593
+ 885 035f 00       		.byte	0
+ 886 0360 15       		.uleb128 0x15
+ 887 0361 91000000 		.4byte	0x91
+ 888 0365 70030000 		.4byte	0x370
+ 889 0369 16       		.uleb128 0x16
+ 890 036a A4000000 		.4byte	0xa4
+ 891 036e 13       		.byte	0x13
+ 892 036f 00       		.byte	0
+ 893 0370 17       		.uleb128 0x17
+ 894 0371 94000000 		.4byte	.LASF25
+ 895 0375 01       		.byte	0x1
+ 896 0376 10       		.byte	0x10
+ 897 0377 98000000 		.4byte	0x98
+ 898 037b 05       		.uleb128 0x5
+ 899 037c 03       		.byte	0x3
+ 900 037d 00000000 		.4byte	PulseLength
+ 901 0381 18       		.uleb128 0x18
+ 902 0382 7100     		.ascii	"q\000"
+ 903 0384 01       		.byte	0x1
+ 904 0385 11       		.byte	0x11
+ 905 0386 5D000000 		.4byte	0x5d
+ 906 038a 05       		.uleb128 0x5
+ 907 038b 03       		.byte	0x3
+ 908 038c 00000000 		.4byte	q
+ 909 0390 17       		.uleb128 0x17
+ 910 0391 96030000 		.4byte	.LASF26
+ 911 0395 01       		.byte	0x1
+ 912 0396 12       		.byte	0x12
+ 913 0397 83000000 		.4byte	0x83
+ 914 039b 05       		.uleb128 0x5
+ 915 039c 03       		.byte	0x3
+ 916 039d 00000000 		.4byte	vbat
+ 917 03a1 17       		.uleb128 0x17
+ 918 03a2 9B030000 		.4byte	.LASF27
+ 919 03a6 01       		.byte	0x1
+ 920 03a7 13       		.byte	0x13
+ARM GAS  C:\Temp\ccolbiUs.s 			page 20
+
+
+ 921 03a8 6B000000 		.4byte	0x6b
+ 922 03ac 05       		.uleb128 0x5
+ 923 03ad 03       		.byte	0x3
+ 924 03ae 00000000 		.4byte	prevPulse
+ 925 03b2 17       		.uleb128 0x17
+ 926 03b3 06040000 		.4byte	.LASF28
+ 927 03b7 01       		.byte	0x1
+ 928 03b8 13       		.byte	0x13
+ 929 03b9 6B000000 		.4byte	0x6b
+ 930 03bd 05       		.uleb128 0x5
+ 931 03be 03       		.byte	0x3
+ 932 03bf 00000000 		.4byte	ppPulse
+ 933 03c3 17       		.uleb128 0x17
+ 934 03c4 BB020000 		.4byte	.LASF29
+ 935 03c8 01       		.byte	0x1
+ 936 03c9 14       		.byte	0x14
+ 937 03ca 83000000 		.4byte	0x83
+ 938 03ce 05       		.uleb128 0x5
+ 939 03cf 03       		.byte	0x3
+ 940 03d0 00000000 		.4byte	dPulse
+ 941 03d4 17       		.uleb128 0x17
+ 942 03d5 6B000000 		.4byte	.LASF30
+ 943 03d9 01       		.byte	0x1
+ 944 03da 14       		.byte	0x14
+ 945 03db 83000000 		.4byte	0x83
+ 946 03df 05       		.uleb128 0x5
+ 947 03e0 03       		.byte	0x3
+ 948 03e1 00000000 		.4byte	ddPulse
+ 949 03e5 17       		.uleb128 0x17
+ 950 03e6 5F030000 		.4byte	.LASF31
+ 951 03ea 01       		.byte	0x1
+ 952 03eb 16       		.byte	0x16
+ 953 03ec 77000000 		.4byte	0x77
+ 954 03f0 05       		.uleb128 0x5
+ 955 03f1 03       		.byte	0x3
+ 956 03f2 00000000 		.4byte	tAccrued
+ 957 03f6 17       		.uleb128 0x17
+ 958 03f7 FD030000 		.4byte	.LASF32
+ 959 03fb 01       		.byte	0x1
+ 960 03fc 17       		.byte	0x17
+ 961 03fd 13010000 		.4byte	0x113
+ 962 0401 05       		.uleb128 0x5
+ 963 0402 03       		.byte	0x3
+ 964 0403 00000000 		.4byte	flatline
+ 965 0407 17       		.uleb128 0x17
+ 966 0408 EC030000 		.4byte	.LASF33
+ 967 040c 01       		.byte	0x1
+ 968 040d 1A       		.byte	0x1a
+ 969 040e 6B000000 		.4byte	0x6b
+ 970 0412 05       		.uleb128 0x5
+ 971 0413 03       		.byte	0x3
+ 972 0414 00000000 		.4byte	low_time
+ 973 0418 17       		.uleb128 0x17
+ 974 0419 34040000 		.4byte	.LASF34
+ 975 041d 01       		.byte	0x1
+ 976 041e 1B       		.byte	0x1b
+ 977 041f 6B000000 		.4byte	0x6b
+ARM GAS  C:\Temp\ccolbiUs.s 			page 21
+
+
+ 978 0423 05       		.uleb128 0x5
+ 979 0424 03       		.byte	0x3
+ 980 0425 00000000 		.4byte	nthTime
+ 981 0429 17       		.uleb128 0x17
+ 982 042a 8B000000 		.4byte	.LASF35
+ 983 042e 01       		.byte	0x1
+ 984 042f 1C       		.byte	0x1c
+ 985 0430 6B000000 		.4byte	0x6b
+ 986 0434 05       		.uleb128 0x5
+ 987 0435 03       		.byte	0x3
+ 988 0436 00000000 		.4byte	override
+ 989 043a 17       		.uleb128 0x17
+ 990 043b A0000000 		.4byte	.LASF36
+ 991 043f 01       		.byte	0x1
+ 992 0440 3E       		.byte	0x3e
+ 993 0441 5D000000 		.4byte	0x5d
+ 994 0445 05       		.uleb128 0x5
+ 995 0446 03       		.byte	0x3
+ 996 0447 00000000 		.4byte	wdtIsrCnt
+ 997 044b 17       		.uleb128 0x17
+ 998 044c 9D020000 		.4byte	.LASF37
+ 999 0450 01       		.byte	0x1
+ 1000 0451 3F       		.byte	0x3f
+ 1001 0452 5D000000 		.4byte	0x5d
+ 1002 0456 05       		.uleb128 0x5
+ 1003 0457 03       		.byte	0x3
+ 1004 0458 00000000 		.4byte	nResets
+ 1005 045c 17       		.uleb128 0x17
+ 1006 045d B6000000 		.4byte	.LASF38
+ 1007 0461 01       		.byte	0x1
+ 1008 0462 40       		.byte	0x40
+ 1009 0463 5D000000 		.4byte	0x5d
+ 1010 0467 05       		.uleb128 0x5
+ 1011 0468 03       		.byte	0x3
+ 1012 0469 00000000 		.4byte	timeRemain
+ 1013 046d 19       		.uleb128 0x19
+ 1014 046e 21030000 		.4byte	.LASF39
+ 1015 0472 21030000 		.4byte	.LASF39
+ 1016 0476 03       		.byte	0x3
+ 1017 0477 4D01     		.2byte	0x14d
+ 1018 0479 19       		.uleb128 0x19
+ 1019 047a 73000000 		.4byte	.LASF40
+ 1020 047e 73000000 		.4byte	.LASF40
+ 1021 0482 03       		.byte	0x3
+ 1022 0483 3301     		.2byte	0x133
+ 1023 0485 19       		.uleb128 0x19
+ 1024 0486 2B000000 		.4byte	.LASF41
+ 1025 048a 2B000000 		.4byte	.LASF41
+ 1026 048e 03       		.byte	0x3
+ 1027 048f 4A01     		.2byte	0x14a
+ 1028 0491 19       		.uleb128 0x19
+ 1029 0492 D5000000 		.4byte	.LASF42
+ 1030 0496 D5000000 		.4byte	.LASF42
+ 1031 049a 03       		.byte	0x3
+ 1032 049b 3201     		.2byte	0x132
+ 1033 049d 19       		.uleb128 0x19
+ 1034 049e 05020000 		.4byte	.LASF43
+ARM GAS  C:\Temp\ccolbiUs.s 			page 22
+
+
+ 1035 04a2 05020000 		.4byte	.LASF43
+ 1036 04a6 03       		.byte	0x3
+ 1037 04a7 4701     		.2byte	0x147
+ 1038 04a9 1A       		.uleb128 0x1a
+ 1039 04aa DB030000 		.4byte	.LASF44
+ 1040 04ae DB030000 		.4byte	.LASF44
+ 1041 04b2 04       		.byte	0x4
+ 1042 04b3 9D       		.byte	0x9d
+ 1043 04b4 1A       		.uleb128 0x1a
+ 1044 04b5 C1000000 		.4byte	.LASF45
+ 1045 04b9 C1000000 		.4byte	.LASF45
+ 1046 04bd 04       		.byte	0x4
+ 1047 04be 9F       		.byte	0x9f
+ 1048 04bf 1A       		.uleb128 0x1a
+ 1049 04c0 0E040000 		.4byte	.LASF46
+ 1050 04c4 0E040000 		.4byte	.LASF46
+ 1051 04c8 04       		.byte	0x4
+ 1052 04c9 A0       		.byte	0xa0
+ 1053 04ca 1A       		.uleb128 0x1a
+ 1054 04cb 42000000 		.4byte	.LASF47
+ 1055 04cf 42000000 		.4byte	.LASF47
+ 1056 04d3 04       		.byte	0x4
+ 1057 04d4 AE       		.byte	0xae
+ 1058 04d5 19       		.uleb128 0x19
+ 1059 04d6 00000000 		.4byte	.LASF48
+ 1060 04da 00000000 		.4byte	.LASF48
+ 1061 04de 05       		.byte	0x5
+ 1062 04df 4701     		.2byte	0x147
+ 1063 04e1 1A       		.uleb128 0x1a
+ 1064 04e2 BE030000 		.4byte	.LASF49
+ 1065 04e6 BE030000 		.4byte	.LASF49
+ 1066 04ea 06       		.byte	0x6
+ 1067 04eb 28       		.byte	0x28
+ 1068 04ec 1A       		.uleb128 0x1a
+ 1069 04ed EC010000 		.4byte	.LASF50
+ 1070 04f1 EC010000 		.4byte	.LASF50
+ 1071 04f5 06       		.byte	0x6
+ 1072 04f6 19       		.byte	0x19
+ 1073 04f7 1A       		.uleb128 0x1a
+ 1074 04f8 1E020000 		.4byte	.LASF51
+ 1075 04fc 1E020000 		.4byte	.LASF51
+ 1076 0500 07       		.byte	0x7
+ 1077 0501 FD       		.byte	0xfd
+ 1078 0502 19       		.uleb128 0x19
+ 1079 0503 7D010000 		.4byte	.LASF52
+ 1080 0507 7D010000 		.4byte	.LASF52
+ 1081 050b 08       		.byte	0x8
+ 1082 050c 2A03     		.2byte	0x32a
+ 1083 050e 1A       		.uleb128 0x1a
+ 1084 050f 37030000 		.4byte	.LASF53
+ 1085 0513 37030000 		.4byte	.LASF53
+ 1086 0517 09       		.byte	0x9
+ 1087 0518 33       		.byte	0x33
+ 1088 0519 1A       		.uleb128 0x1a
+ 1089 051a F9010000 		.4byte	.LASF54
+ 1090 051e F9010000 		.4byte	.LASF54
+ 1091 0522 0A       		.byte	0xa
+ARM GAS  C:\Temp\ccolbiUs.s 			page 23
+
+
+ 1092 0523 33       		.byte	0x33
+ 1093 0524 1A       		.uleb128 0x1a
+ 1094 0525 90010000 		.4byte	.LASF55
+ 1095 0529 90010000 		.4byte	.LASF55
+ 1096 052d 0B       		.byte	0xb
+ 1097 052e 33       		.byte	0x33
+ 1098 052f 1A       		.uleb128 0x1a
+ 1099 0530 A5020000 		.4byte	.LASF56
+ 1100 0534 A5020000 		.4byte	.LASF56
+ 1101 0538 0C       		.byte	0xc
+ 1102 0539 77       		.byte	0x77
+ 1103 053a 1A       		.uleb128 0x1a
+ 1104 053b F5030000 		.4byte	.LASF57
+ 1105 053f F5030000 		.4byte	.LASF57
+ 1106 0543 0D       		.byte	0xd
+ 1107 0544 D9       		.byte	0xd9
+ 1108 0545 1A       		.uleb128 0x1a
+ 1109 0546 84020000 		.4byte	.LASF58
+ 1110 054a 84020000 		.4byte	.LASF58
+ 1111 054e 0C       		.byte	0xc
+ 1112 054f 67       		.byte	0x67
+ 1113 0550 1A       		.uleb128 0x1a
+ 1114 0551 C2020000 		.4byte	.LASF59
+ 1115 0555 C2020000 		.4byte	.LASF59
+ 1116 0559 0C       		.byte	0xc
+ 1117 055a 70       		.byte	0x70
+ 1118 055b 1A       		.uleb128 0x1a
+ 1119 055c A5010000 		.4byte	.LASF60
+ 1120 0560 A5010000 		.4byte	.LASF60
+ 1121 0564 0C       		.byte	0xc
+ 1122 0565 6A       		.byte	0x6a
+ 1123 0566 1A       		.uleb128 0x1a
+ 1124 0567 1C000000 		.4byte	.LASF61
+ 1125 056b 1C000000 		.4byte	.LASF61
+ 1126 056f 0C       		.byte	0xc
+ 1127 0570 6C       		.byte	0x6c
+ 1128 0571 1A       		.uleb128 0x1a
+ 1129 0572 A5030000 		.4byte	.LASF62
+ 1130 0576 A5030000 		.4byte	.LASF62
+ 1131 057a 0C       		.byte	0xc
+ 1132 057b 69       		.byte	0x69
+ 1133 057c 1A       		.uleb128 0x1a
+ 1134 057d 55000000 		.4byte	.LASF63
+ 1135 0581 55000000 		.4byte	.LASF63
+ 1136 0585 0E       		.byte	0xe
+ 1137 0586 18       		.byte	0x18
+ 1138 0587 19       		.uleb128 0x19
+ 1139 0588 1E040000 		.4byte	.LASF64
+ 1140 058c 1E040000 		.4byte	.LASF64
+ 1141 0590 0F       		.byte	0xf
+ 1142 0591 3201     		.2byte	0x132
+ 1143 0593 1A       		.uleb128 0x1a
+ 1144 0594 27020000 		.4byte	.LASF65
+ 1145 0598 27020000 		.4byte	.LASF65
+ 1146 059c 10       		.byte	0x10
+ 1147 059d 72       		.byte	0x72
+ 1148 059e 00       		.byte	0
+ARM GAS  C:\Temp\ccolbiUs.s 			page 24
+
+
+ 1149              		.section	.debug_abbrev,"",%progbits
+ 1150              	.Ldebug_abbrev0:
+ 1151 0000 01       		.uleb128 0x1
+ 1152 0001 11       		.uleb128 0x11
+ 1153 0002 01       		.byte	0x1
+ 1154 0003 25       		.uleb128 0x25
+ 1155 0004 0E       		.uleb128 0xe
+ 1156 0005 13       		.uleb128 0x13
+ 1157 0006 0B       		.uleb128 0xb
+ 1158 0007 03       		.uleb128 0x3
+ 1159 0008 0E       		.uleb128 0xe
+ 1160 0009 1B       		.uleb128 0x1b
+ 1161 000a 0E       		.uleb128 0xe
+ 1162 000b 55       		.uleb128 0x55
+ 1163 000c 17       		.uleb128 0x17
+ 1164 000d 11       		.uleb128 0x11
+ 1165 000e 01       		.uleb128 0x1
+ 1166 000f 10       		.uleb128 0x10
+ 1167 0010 17       		.uleb128 0x17
+ 1168 0011 00       		.byte	0
+ 1169 0012 00       		.byte	0
+ 1170 0013 02       		.uleb128 0x2
+ 1171 0014 24       		.uleb128 0x24
+ 1172 0015 00       		.byte	0
+ 1173 0016 0B       		.uleb128 0xb
+ 1174 0017 0B       		.uleb128 0xb
+ 1175 0018 3E       		.uleb128 0x3e
+ 1176 0019 0B       		.uleb128 0xb
+ 1177 001a 03       		.uleb128 0x3
+ 1178 001b 0E       		.uleb128 0xe
+ 1179 001c 00       		.byte	0
+ 1180 001d 00       		.byte	0
+ 1181 001e 03       		.uleb128 0x3
+ 1182 001f 24       		.uleb128 0x24
+ 1183 0020 00       		.byte	0
+ 1184 0021 0B       		.uleb128 0xb
+ 1185 0022 0B       		.uleb128 0xb
+ 1186 0023 3E       		.uleb128 0x3e
+ 1187 0024 0B       		.uleb128 0xb
+ 1188 0025 03       		.uleb128 0x3
+ 1189 0026 08       		.uleb128 0x8
+ 1190 0027 00       		.byte	0
+ 1191 0028 00       		.byte	0
+ 1192 0029 04       		.uleb128 0x4
+ 1193 002a 16       		.uleb128 0x16
+ 1194 002b 00       		.byte	0
+ 1195 002c 03       		.uleb128 0x3
+ 1196 002d 0E       		.uleb128 0xe
+ 1197 002e 3A       		.uleb128 0x3a
+ 1198 002f 0B       		.uleb128 0xb
+ 1199 0030 3B       		.uleb128 0x3b
+ 1200 0031 05       		.uleb128 0x5
+ 1201 0032 49       		.uleb128 0x49
+ 1202 0033 13       		.uleb128 0x13
+ 1203 0034 00       		.byte	0
+ 1204 0035 00       		.byte	0
+ 1205 0036 05       		.uleb128 0x5
+ARM GAS  C:\Temp\ccolbiUs.s 			page 25
+
+
+ 1206 0037 35       		.uleb128 0x35
+ 1207 0038 00       		.byte	0
+ 1208 0039 49       		.uleb128 0x49
+ 1209 003a 13       		.uleb128 0x13
+ 1210 003b 00       		.byte	0
+ 1211 003c 00       		.byte	0
+ 1212 003d 06       		.uleb128 0x6
+ 1213 003e 2E       		.uleb128 0x2e
+ 1214 003f 01       		.byte	0x1
+ 1215 0040 3F       		.uleb128 0x3f
+ 1216 0041 19       		.uleb128 0x19
+ 1217 0042 03       		.uleb128 0x3
+ 1218 0043 0E       		.uleb128 0xe
+ 1219 0044 3A       		.uleb128 0x3a
+ 1220 0045 0B       		.uleb128 0xb
+ 1221 0046 3B       		.uleb128 0x3b
+ 1222 0047 0B       		.uleb128 0xb
+ 1223 0048 27       		.uleb128 0x27
+ 1224 0049 19       		.uleb128 0x19
+ 1225 004a 11       		.uleb128 0x11
+ 1226 004b 01       		.uleb128 0x1
+ 1227 004c 12       		.uleb128 0x12
+ 1228 004d 06       		.uleb128 0x6
+ 1229 004e 40       		.uleb128 0x40
+ 1230 004f 18       		.uleb128 0x18
+ 1231 0050 9742     		.uleb128 0x2117
+ 1232 0052 19       		.uleb128 0x19
+ 1233 0053 01       		.uleb128 0x1
+ 1234 0054 13       		.uleb128 0x13
+ 1235 0055 00       		.byte	0
+ 1236 0056 00       		.byte	0
+ 1237 0057 07       		.uleb128 0x7
+ 1238 0058 34       		.uleb128 0x34
+ 1239 0059 00       		.byte	0
+ 1240 005a 03       		.uleb128 0x3
+ 1241 005b 0E       		.uleb128 0xe
+ 1242 005c 3A       		.uleb128 0x3a
+ 1243 005d 0B       		.uleb128 0xb
+ 1244 005e 3B       		.uleb128 0x3b
+ 1245 005f 0B       		.uleb128 0xb
+ 1246 0060 49       		.uleb128 0x49
+ 1247 0061 13       		.uleb128 0x13
+ 1248 0062 00       		.byte	0
+ 1249 0063 00       		.byte	0
+ 1250 0064 08       		.uleb128 0x8
+ 1251 0065 34       		.uleb128 0x34
+ 1252 0066 00       		.byte	0
+ 1253 0067 03       		.uleb128 0x3
+ 1254 0068 08       		.uleb128 0x8
+ 1255 0069 3A       		.uleb128 0x3a
+ 1256 006a 0B       		.uleb128 0xb
+ 1257 006b 3B       		.uleb128 0x3b
+ 1258 006c 0B       		.uleb128 0xb
+ 1259 006d 49       		.uleb128 0x49
+ 1260 006e 13       		.uleb128 0x13
+ 1261 006f 00       		.byte	0
+ 1262 0070 00       		.byte	0
+ARM GAS  C:\Temp\ccolbiUs.s 			page 26
+
+
+ 1263 0071 09       		.uleb128 0x9
+ 1264 0072 898201   		.uleb128 0x4109
+ 1265 0075 00       		.byte	0
+ 1266 0076 11       		.uleb128 0x11
+ 1267 0077 01       		.uleb128 0x1
+ 1268 0078 31       		.uleb128 0x31
+ 1269 0079 13       		.uleb128 0x13
+ 1270 007a 00       		.byte	0
+ 1271 007b 00       		.byte	0
+ 1272 007c 0A       		.uleb128 0xa
+ 1273 007d 898201   		.uleb128 0x4109
+ 1274 0080 01       		.byte	0x1
+ 1275 0081 11       		.uleb128 0x11
+ 1276 0082 01       		.uleb128 0x1
+ 1277 0083 31       		.uleb128 0x31
+ 1278 0084 13       		.uleb128 0x13
+ 1279 0085 01       		.uleb128 0x1
+ 1280 0086 13       		.uleb128 0x13
+ 1281 0087 00       		.byte	0
+ 1282 0088 00       		.byte	0
+ 1283 0089 0B       		.uleb128 0xb
+ 1284 008a 8A8201   		.uleb128 0x410a
+ 1285 008d 00       		.byte	0
+ 1286 008e 02       		.uleb128 0x2
+ 1287 008f 18       		.uleb128 0x18
+ 1288 0090 9142     		.uleb128 0x2111
+ 1289 0092 18       		.uleb128 0x18
+ 1290 0093 00       		.byte	0
+ 1291 0094 00       		.byte	0
+ 1292 0095 0C       		.uleb128 0xc
+ 1293 0096 898201   		.uleb128 0x4109
+ 1294 0099 01       		.byte	0x1
+ 1295 009a 11       		.uleb128 0x11
+ 1296 009b 01       		.uleb128 0x1
+ 1297 009c 31       		.uleb128 0x31
+ 1298 009d 13       		.uleb128 0x13
+ 1299 009e 00       		.byte	0
+ 1300 009f 00       		.byte	0
+ 1301 00a0 0D       		.uleb128 0xd
+ 1302 00a1 26       		.uleb128 0x26
+ 1303 00a2 00       		.byte	0
+ 1304 00a3 49       		.uleb128 0x49
+ 1305 00a4 13       		.uleb128 0x13
+ 1306 00a5 00       		.byte	0
+ 1307 00a6 00       		.byte	0
+ 1308 00a7 0E       		.uleb128 0xe
+ 1309 00a8 2E       		.uleb128 0x2e
+ 1310 00a9 01       		.byte	0x1
+ 1311 00aa 3F       		.uleb128 0x3f
+ 1312 00ab 19       		.uleb128 0x19
+ 1313 00ac 03       		.uleb128 0x3
+ 1314 00ad 0E       		.uleb128 0xe
+ 1315 00ae 3A       		.uleb128 0x3a
+ 1316 00af 0B       		.uleb128 0xb
+ 1317 00b0 3B       		.uleb128 0x3b
+ 1318 00b1 0B       		.uleb128 0xb
+ 1319 00b2 27       		.uleb128 0x27
+ARM GAS  C:\Temp\ccolbiUs.s 			page 27
+
+
+ 1320 00b3 19       		.uleb128 0x19
+ 1321 00b4 11       		.uleb128 0x11
+ 1322 00b5 01       		.uleb128 0x1
+ 1323 00b6 12       		.uleb128 0x12
+ 1324 00b7 06       		.uleb128 0x6
+ 1325 00b8 40       		.uleb128 0x40
+ 1326 00b9 18       		.uleb128 0x18
+ 1327 00ba 9642     		.uleb128 0x2116
+ 1328 00bc 19       		.uleb128 0x19
+ 1329 00bd 01       		.uleb128 0x1
+ 1330 00be 13       		.uleb128 0x13
+ 1331 00bf 00       		.byte	0
+ 1332 00c0 00       		.byte	0
+ 1333 00c1 0F       		.uleb128 0xf
+ 1334 00c2 34       		.uleb128 0x34
+ 1335 00c3 00       		.byte	0
+ 1336 00c4 03       		.uleb128 0x3
+ 1337 00c5 08       		.uleb128 0x8
+ 1338 00c6 3A       		.uleb128 0x3a
+ 1339 00c7 0B       		.uleb128 0xb
+ 1340 00c8 3B       		.uleb128 0x3b
+ 1341 00c9 0B       		.uleb128 0xb
+ 1342 00ca 49       		.uleb128 0x49
+ 1343 00cb 13       		.uleb128 0x13
+ 1344 00cc 02       		.uleb128 0x2
+ 1345 00cd 17       		.uleb128 0x17
+ 1346 00ce 00       		.byte	0
+ 1347 00cf 00       		.byte	0
+ 1348 00d0 10       		.uleb128 0x10
+ 1349 00d1 2E       		.uleb128 0x2e
+ 1350 00d2 01       		.byte	0x1
+ 1351 00d3 3F       		.uleb128 0x3f
+ 1352 00d4 19       		.uleb128 0x19
+ 1353 00d5 03       		.uleb128 0x3
+ 1354 00d6 0E       		.uleb128 0xe
+ 1355 00d7 3A       		.uleb128 0x3a
+ 1356 00d8 0B       		.uleb128 0xb
+ 1357 00d9 3B       		.uleb128 0x3b
+ 1358 00da 0B       		.uleb128 0xb
+ 1359 00db 27       		.uleb128 0x27
+ 1360 00dc 19       		.uleb128 0x19
+ 1361 00dd 49       		.uleb128 0x49
+ 1362 00de 13       		.uleb128 0x13
+ 1363 00df 8701     		.uleb128 0x87
+ 1364 00e1 19       		.uleb128 0x19
+ 1365 00e2 11       		.uleb128 0x11
+ 1366 00e3 01       		.uleb128 0x1
+ 1367 00e4 12       		.uleb128 0x12
+ 1368 00e5 06       		.uleb128 0x6
+ 1369 00e6 40       		.uleb128 0x40
+ 1370 00e7 18       		.uleb128 0x18
+ 1371 00e8 9742     		.uleb128 0x2117
+ 1372 00ea 19       		.uleb128 0x19
+ 1373 00eb 01       		.uleb128 0x1
+ 1374 00ec 13       		.uleb128 0x13
+ 1375 00ed 00       		.byte	0
+ 1376 00ee 00       		.byte	0
+ARM GAS  C:\Temp\ccolbiUs.s 			page 28
+
+
+ 1377 00ef 11       		.uleb128 0x11
+ 1378 00f0 34       		.uleb128 0x34
+ 1379 00f1 00       		.byte	0
+ 1380 00f2 03       		.uleb128 0x3
+ 1381 00f3 0E       		.uleb128 0xe
+ 1382 00f4 3A       		.uleb128 0x3a
+ 1383 00f5 0B       		.uleb128 0xb
+ 1384 00f6 3B       		.uleb128 0x3b
+ 1385 00f7 0B       		.uleb128 0xb
+ 1386 00f8 49       		.uleb128 0x49
+ 1387 00f9 13       		.uleb128 0x13
+ 1388 00fa 02       		.uleb128 0x2
+ 1389 00fb 18       		.uleb128 0x18
+ 1390 00fc 00       		.byte	0
+ 1391 00fd 00       		.byte	0
+ 1392 00fe 12       		.uleb128 0x12
+ 1393 00ff 0B       		.uleb128 0xb
+ 1394 0100 01       		.byte	0x1
+ 1395 0101 11       		.uleb128 0x11
+ 1396 0102 01       		.uleb128 0x1
+ 1397 0103 12       		.uleb128 0x12
+ 1398 0104 06       		.uleb128 0x6
+ 1399 0105 01       		.uleb128 0x1
+ 1400 0106 13       		.uleb128 0x13
+ 1401 0107 00       		.byte	0
+ 1402 0108 00       		.byte	0
+ 1403 0109 13       		.uleb128 0x13
+ 1404 010a 34       		.uleb128 0x34
+ 1405 010b 00       		.byte	0
+ 1406 010c 03       		.uleb128 0x3
+ 1407 010d 0E       		.uleb128 0xe
+ 1408 010e 3A       		.uleb128 0x3a
+ 1409 010f 0B       		.uleb128 0xb
+ 1410 0110 3B       		.uleb128 0x3b
+ 1411 0111 0B       		.uleb128 0xb
+ 1412 0112 49       		.uleb128 0x49
+ 1413 0113 13       		.uleb128 0x13
+ 1414 0114 02       		.uleb128 0x2
+ 1415 0115 17       		.uleb128 0x17
+ 1416 0116 00       		.byte	0
+ 1417 0117 00       		.byte	0
+ 1418 0118 14       		.uleb128 0x14
+ 1419 0119 34       		.uleb128 0x34
+ 1420 011a 00       		.byte	0
+ 1421 011b 03       		.uleb128 0x3
+ 1422 011c 0E       		.uleb128 0xe
+ 1423 011d 3A       		.uleb128 0x3a
+ 1424 011e 0B       		.uleb128 0xb
+ 1425 011f 3B       		.uleb128 0x3b
+ 1426 0120 0B       		.uleb128 0xb
+ 1427 0121 49       		.uleb128 0x49
+ 1428 0122 13       		.uleb128 0x13
+ 1429 0123 1C       		.uleb128 0x1c
+ 1430 0124 0B       		.uleb128 0xb
+ 1431 0125 00       		.byte	0
+ 1432 0126 00       		.byte	0
+ 1433 0127 15       		.uleb128 0x15
+ARM GAS  C:\Temp\ccolbiUs.s 			page 29
+
+
+ 1434 0128 01       		.uleb128 0x1
+ 1435 0129 01       		.byte	0x1
+ 1436 012a 49       		.uleb128 0x49
+ 1437 012b 13       		.uleb128 0x13
+ 1438 012c 01       		.uleb128 0x1
+ 1439 012d 13       		.uleb128 0x13
+ 1440 012e 00       		.byte	0
+ 1441 012f 00       		.byte	0
+ 1442 0130 16       		.uleb128 0x16
+ 1443 0131 21       		.uleb128 0x21
+ 1444 0132 00       		.byte	0
+ 1445 0133 49       		.uleb128 0x49
+ 1446 0134 13       		.uleb128 0x13
+ 1447 0135 2F       		.uleb128 0x2f
+ 1448 0136 0B       		.uleb128 0xb
+ 1449 0137 00       		.byte	0
+ 1450 0138 00       		.byte	0
+ 1451 0139 17       		.uleb128 0x17
+ 1452 013a 34       		.uleb128 0x34
+ 1453 013b 00       		.byte	0
+ 1454 013c 03       		.uleb128 0x3
+ 1455 013d 0E       		.uleb128 0xe
+ 1456 013e 3A       		.uleb128 0x3a
+ 1457 013f 0B       		.uleb128 0xb
+ 1458 0140 3B       		.uleb128 0x3b
+ 1459 0141 0B       		.uleb128 0xb
+ 1460 0142 49       		.uleb128 0x49
+ 1461 0143 13       		.uleb128 0x13
+ 1462 0144 3F       		.uleb128 0x3f
+ 1463 0145 19       		.uleb128 0x19
+ 1464 0146 02       		.uleb128 0x2
+ 1465 0147 18       		.uleb128 0x18
+ 1466 0148 00       		.byte	0
+ 1467 0149 00       		.byte	0
+ 1468 014a 18       		.uleb128 0x18
+ 1469 014b 34       		.uleb128 0x34
+ 1470 014c 00       		.byte	0
+ 1471 014d 03       		.uleb128 0x3
+ 1472 014e 08       		.uleb128 0x8
+ 1473 014f 3A       		.uleb128 0x3a
+ 1474 0150 0B       		.uleb128 0xb
+ 1475 0151 3B       		.uleb128 0x3b
+ 1476 0152 0B       		.uleb128 0xb
+ 1477 0153 49       		.uleb128 0x49
+ 1478 0154 13       		.uleb128 0x13
+ 1479 0155 3F       		.uleb128 0x3f
+ 1480 0156 19       		.uleb128 0x19
+ 1481 0157 02       		.uleb128 0x2
+ 1482 0158 18       		.uleb128 0x18
+ 1483 0159 00       		.byte	0
+ 1484 015a 00       		.byte	0
+ 1485 015b 19       		.uleb128 0x19
+ 1486 015c 2E       		.uleb128 0x2e
+ 1487 015d 00       		.byte	0
+ 1488 015e 3F       		.uleb128 0x3f
+ 1489 015f 19       		.uleb128 0x19
+ 1490 0160 3C       		.uleb128 0x3c
+ARM GAS  C:\Temp\ccolbiUs.s 			page 30
+
+
+ 1491 0161 19       		.uleb128 0x19
+ 1492 0162 6E       		.uleb128 0x6e
+ 1493 0163 0E       		.uleb128 0xe
+ 1494 0164 03       		.uleb128 0x3
+ 1495 0165 0E       		.uleb128 0xe
+ 1496 0166 3A       		.uleb128 0x3a
+ 1497 0167 0B       		.uleb128 0xb
+ 1498 0168 3B       		.uleb128 0x3b
+ 1499 0169 05       		.uleb128 0x5
+ 1500 016a 00       		.byte	0
+ 1501 016b 00       		.byte	0
+ 1502 016c 1A       		.uleb128 0x1a
+ 1503 016d 2E       		.uleb128 0x2e
+ 1504 016e 00       		.byte	0
+ 1505 016f 3F       		.uleb128 0x3f
+ 1506 0170 19       		.uleb128 0x19
+ 1507 0171 3C       		.uleb128 0x3c
+ 1508 0172 19       		.uleb128 0x19
+ 1509 0173 6E       		.uleb128 0x6e
+ 1510 0174 0E       		.uleb128 0xe
+ 1511 0175 03       		.uleb128 0x3
+ 1512 0176 0E       		.uleb128 0xe
+ 1513 0177 3A       		.uleb128 0x3a
+ 1514 0178 0B       		.uleb128 0xb
+ 1515 0179 3B       		.uleb128 0x3b
+ 1516 017a 0B       		.uleb128 0xb
+ 1517 017b 00       		.byte	0
+ 1518 017c 00       		.byte	0
+ 1519 017d 00       		.byte	0
+ 1520              		.section	.debug_loc,"",%progbits
+ 1521              	.Ldebug_loc0:
+ 1522              	.LLST0:
+ 1523 0000 02000000 		.4byte	.LVL5
+ 1524 0004 14000000 		.4byte	.LVL9
+ 1525 0008 0200     		.2byte	0x2
+ 1526 000a 30       		.byte	0x30
+ 1527 000b 9F       		.byte	0x9f
+ 1528 000c 14000000 		.4byte	.LVL9
+ 1529 0010 19000000 		.4byte	.LVL10-1
+ 1530 0014 0700     		.2byte	0x7
+ 1531 0016 71       		.byte	0x71
+ 1532 0017 00       		.sleb128 0
+ 1533 0018 40       		.byte	0x40
+ 1534 0019 24       		.byte	0x24
+ 1535 001a 40       		.byte	0x40
+ 1536 001b 26       		.byte	0x26
+ 1537 001c 9F       		.byte	0x9f
+ 1538 001d 00000000 		.4byte	0
+ 1539 0021 00000000 		.4byte	0
+ 1540              	.LLST1:
+ 1541 0025 02000000 		.4byte	.LVL5
+ 1542 0029 1E000000 		.4byte	.LVL11
+ 1543 002d 0200     		.2byte	0x2
+ 1544 002f 30       		.byte	0x30
+ 1545 0030 9F       		.byte	0x9f
+ 1546 0031 1E000000 		.4byte	.LVL11
+ 1547 0035 22000000 		.4byte	.LVL12
+ARM GAS  C:\Temp\ccolbiUs.s 			page 31
+
+
+ 1548 0039 0100     		.2byte	0x1
+ 1549 003b 50       		.byte	0x50
+ 1550 003c 00000000 		.4byte	0
+ 1551 0040 00000000 		.4byte	0
+ 1552              	.LLST2:
+ 1553 0044 40000000 		.4byte	.LVL27
+ 1554 0048 42000000 		.4byte	.LVL28
+ 1555 004c 0200     		.2byte	0x2
+ 1556 004e 30       		.byte	0x30
+ 1557 004f 9F       		.byte	0x9f
+ 1558 0050 42000000 		.4byte	.LVL28
+ 1559 0054 E0000000 		.4byte	.LFE36
+ 1560 0058 0100     		.2byte	0x1
+ 1561 005a 56       		.byte	0x56
+ 1562 005b 00000000 		.4byte	0
+ 1563 005f 00000000 		.4byte	0
+ 1564              	.LLST3:
+ 1565 0063 62000000 		.4byte	.LVL29
+ 1566 0067 94000000 		.4byte	.LVL32
+ 1567 006b 0100     		.2byte	0x1
+ 1568 006d 54       		.byte	0x54
+ 1569 006e 94000000 		.4byte	.LVL32
+ 1570 0072 9A000000 		.4byte	.LVL33
+ 1571 0076 0200     		.2byte	0x2
+ 1572 0078 31       		.byte	0x31
+ 1573 0079 9F       		.byte	0x9f
+ 1574 007a 9A000000 		.4byte	.LVL33
+ 1575 007e A0000000 		.4byte	.LVL35
+ 1576 0082 0100     		.2byte	0x1
+ 1577 0084 54       		.byte	0x54
+ 1578 0085 00000000 		.4byte	0
+ 1579 0089 00000000 		.4byte	0
+ 1580              	.LLST4:
+ 1581 008d 62000000 		.4byte	.LVL29
+ 1582 0091 94000000 		.4byte	.LVL32
+ 1583 0095 0200     		.2byte	0x2
+ 1584 0097 31       		.byte	0x31
+ 1585 0098 9F       		.byte	0x9f
+ 1586 0099 94000000 		.4byte	.LVL32
+ 1587 009d 9A000000 		.4byte	.LVL33
+ 1588 00a1 0200     		.2byte	0x2
+ 1589 00a3 30       		.byte	0x30
+ 1590 00a4 9F       		.byte	0x9f
+ 1591 00a5 9A000000 		.4byte	.LVL33
+ 1592 00a9 9C000000 		.4byte	.LVL34
+ 1593 00ad 0200     		.2byte	0x2
+ 1594 00af 31       		.byte	0x31
+ 1595 00b0 9F       		.byte	0x9f
+ 1596 00b1 9C000000 		.4byte	.LVL34
+ 1597 00b5 AA000000 		.4byte	.LVL37
+ 1598 00b9 0100     		.2byte	0x1
+ 1599 00bb 55       		.byte	0x55
+ 1600 00bc 00000000 		.4byte	0
+ 1601 00c0 00000000 		.4byte	0
+ 1602              		.section	.debug_aranges,"",%progbits
+ 1603 0000 34000000 		.4byte	0x34
+ 1604 0004 0200     		.2byte	0x2
+ARM GAS  C:\Temp\ccolbiUs.s 			page 32
+
+
+ 1605 0006 00000000 		.4byte	.Ldebug_info0
+ 1606 000a 04       		.byte	0x4
+ 1607 000b 00       		.byte	0
+ 1608 000c 0000     		.2byte	0
+ 1609 000e 0000     		.2byte	0
+ 1610 0010 00000000 		.4byte	.LFB34
+ 1611 0014 38000000 		.4byte	.LFE34-.LFB34
+ 1612 0018 00000000 		.4byte	.LFB33
+ 1613 001c 58000000 		.4byte	.LFE33-.LFB33
+ 1614 0020 00000000 		.4byte	.LFB35
+ 1615 0024 24000000 		.4byte	.LFE35-.LFB35
+ 1616 0028 00000000 		.4byte	.LFB36
+ 1617 002c E0000000 		.4byte	.LFE36-.LFB36
+ 1618 0030 00000000 		.4byte	0
+ 1619 0034 00000000 		.4byte	0
+ 1620              		.section	.debug_ranges,"",%progbits
+ 1621              	.Ldebug_ranges0:
+ 1622 0000 00000000 		.4byte	.LFB34
+ 1623 0004 38000000 		.4byte	.LFE34
+ 1624 0008 00000000 		.4byte	.LFB33
+ 1625 000c 58000000 		.4byte	.LFE33
+ 1626 0010 00000000 		.4byte	.LFB35
+ 1627 0014 24000000 		.4byte	.LFE35
+ 1628 0018 00000000 		.4byte	.LFB36
+ 1629 001c E0000000 		.4byte	.LFE36
+ 1630 0020 00000000 		.4byte	0
+ 1631 0024 00000000 		.4byte	0
+ 1632              		.section	.debug_line,"",%progbits
+ 1633              	.Ldebug_line0:
+ 1634 0000 ED010000 		.section	.debug_str,"MS",%progbits,1
+ 1634      02006601 
+ 1634      00000201 
+ 1634      FB0E0D00 
+ 1634      01010101 
+ 1635              	.LASF48:
+ 1636 0000 416E616C 		.ascii	"Analog_Timer_ClearInterrupt\000"
+ 1636      6F675F54 
+ 1636      696D6572 
+ 1636      5F436C65 
+ 1636      6172496E 
+ 1637              	.LASF61:
+ 1638 001c 43795379 		.ascii	"CySysWdtEnable\000"
+ 1638      73576474 
+ 1638      456E6162 
+ 1638      6C6500
+ 1639              	.LASF41:
+ 1640 002b 50574D5F 		.ascii	"PWM_Timer_WriteCounter\000"
+ 1640      54696D65 
+ 1640      725F5772 
+ 1640      69746543 
+ 1640      6F756E74 
+ 1641              	.LASF47:
+ 1642 0042 4144435F 		.ascii	"ADC_CountsTo_Volts\000"
+ 1642      436F756E 
+ 1642      7473546F 
+ 1642      5F566F6C 
+ 1642      747300
+ARM GAS  C:\Temp\ccolbiUs.s 			page 33
+
+
+ 1643              	.LASF63:
+ 1644 0055 50574D5F 		.ascii	"PWM_Timer_Int_StartEx\000"
+ 1644      54696D65 
+ 1644      725F496E 
+ 1644      745F5374 
+ 1644      61727445 
+ 1645              	.LASF30:
+ 1646 006b 64645075 		.ascii	"ddPulse\000"
+ 1646      6C736500 
+ 1647              	.LASF40:
+ 1648 0073 50574D5F 		.ascii	"PWM_Timer_Stop\000"
+ 1648      54696D65 
+ 1648      725F5374 
+ 1648      6F7000
+ 1649              	.LASF15:
+ 1650 0082 73697A65 		.ascii	"sizetype\000"
+ 1650      74797065 
+ 1650      00
+ 1651              	.LASF35:
+ 1652 008b 6F766572 		.ascii	"override\000"
+ 1652      72696465 
+ 1652      00
+ 1653              	.LASF25:
+ 1654 0094 50756C73 		.ascii	"PulseLength\000"
+ 1654      654C656E 
+ 1654      67746800 
+ 1655              	.LASF36:
+ 1656 00a0 77647449 		.ascii	"wdtIsrCnt\000"
+ 1656      7372436E 
+ 1656      7400
+ 1657              	.LASF69:
+ 1658 00aa 6D61696E 		.ascii	"main\000"
+ 1658      00
+ 1659              	.LASF20:
+ 1660 00af 77647449 		.ascii	"wdtISR\000"
+ 1660      535200
+ 1661              	.LASF38:
+ 1662 00b6 74696D65 		.ascii	"timeRemain\000"
+ 1662      52656D61 
+ 1662      696E00
+ 1663              	.LASF45:
+ 1664 00c1 4144435F 		.ascii	"ADC_IsEndConversion\000"
+ 1664      4973456E 
+ 1664      64436F6E 
+ 1664      76657273 
+ 1664      696F6E00 
+ 1665              	.LASF42:
+ 1666 00d5 50574D5F 		.ascii	"PWM_Timer_Start\000"
+ 1666      54696D65 
+ 1666      725F5374 
+ 1666      61727400 
+ 1667              	.LASF66:
+ 1668 00e5 474E5520 		.ascii	"GNU C11 5.4.1 20160609 (release) [ARM/embedded-5-br"
+ 1668      43313120 
+ 1668      352E342E 
+ 1668      31203230 
+ 1668      31363036 
+ARM GAS  C:\Temp\ccolbiUs.s 			page 34
+
+
+ 1669 0118 616E6368 		.ascii	"anch revision 237715] -mcpu=cortex-m0 -mthumb -g -O"
+ 1669      20726576 
+ 1669      6973696F 
+ 1669      6E203233 
+ 1669      37373135 
+ 1670 014b 67202D66 		.ascii	"g -ffunction-sections -ffat-lto-objects\000"
+ 1670      66756E63 
+ 1670      74696F6E 
+ 1670      2D736563 
+ 1670      74696F6E 
+ 1671              	.LASF16:
+ 1672 0173 66697273 		.ascii	"firstTime\000"
+ 1672      7454696D 
+ 1672      6500
+ 1673              	.LASF52:
+ 1674 017d 55415254 		.ascii	"UART_UartPutString\000"
+ 1674      5F556172 
+ 1674      74507574 
+ 1674      53747269 
+ 1674      6E6700
+ 1675              	.LASF55:
+ 1676 0190 426C7565 		.ascii	"Blue_Write\000"
+ 1676      5F577269 
+ 1676      746500
+ 1677              	.LASF2:
+ 1678 019b 73686F72 		.ascii	"short int\000"
+ 1678      7420696E 
+ 1678      7400
+ 1679              	.LASF60:
+ 1680 01a5 43795379 		.ascii	"CySysWdtSetClearOnMatch\000"
+ 1680      73576474 
+ 1680      53657443 
+ 1680      6C656172 
+ 1680      4F6E4D61 
+ 1681              	.LASF11:
+ 1682 01bd 666C6F61 		.ascii	"float\000"
+ 1682      7400
+ 1683              	.LASF18:
+ 1684 01c3 50574D5F 		.ascii	"PWM_Int\000"
+ 1684      496E7400 
+ 1685              	.LASF6:
+ 1686 01cb 6C6F6E67 		.ascii	"long long int\000"
+ 1686      206C6F6E 
+ 1686      6720696E 
+ 1686      7400
+ 1687              	.LASF4:
+ 1688 01d9 6C6F6E67 		.ascii	"long int\000"
+ 1688      20696E74 
+ 1688      00
+ 1689              	.LASF23:
+ 1690 01e2 47726565 		.ascii	"Green_Val\000"
+ 1690      6E5F5661 
+ 1690      6C00
+ 1691              	.LASF50:
+ 1692 01ec 5744545F 		.ascii	"WDT_ISR_Stop\000"
+ 1692      4953525F 
+ 1692      53746F70 
+ARM GAS  C:\Temp\ccolbiUs.s 			page 35
+
+
+ 1692      00
+ 1693              	.LASF54:
+ 1694 01f9 47726565 		.ascii	"Green_Write\000"
+ 1694      6E5F5772 
+ 1694      69746500 
+ 1695              	.LASF43:
+ 1696 0205 50574D5F 		.ascii	"PWM_Timer_ClearInterrupt\000"
+ 1696      54696D65 
+ 1696      725F436C 
+ 1696      65617249 
+ 1696      6E746572 
+ 1697              	.LASF51:
+ 1698 021e 736E7072 		.ascii	"snprintf\000"
+ 1698      696E7466 
+ 1698      00
+ 1699              	.LASF65:
+ 1700 0227 55415254 		.ascii	"UART_Start\000"
+ 1700      5F537461 
+ 1700      727400
+ 1701              	.LASF19:
+ 1702 0232 4144435F 		.ascii	"ADC_ISR\000"
+ 1702      49535200 
+ 1703              	.LASF14:
+ 1704 023a 6C6F6E67 		.ascii	"long double\000"
+ 1704      20646F75 
+ 1704      626C6500 
+ 1705              	.LASF1:
+ 1706 0246 756E7369 		.ascii	"unsigned char\000"
+ 1706      676E6564 
+ 1706      20636861 
+ 1706      7200
+ 1707              	.LASF0:
+ 1708 0254 7369676E 		.ascii	"signed char\000"
+ 1708      65642063 
+ 1708      68617200 
+ 1709              	.LASF7:
+ 1710 0260 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 1710      206C6F6E 
+ 1710      6720756E 
+ 1710      7369676E 
+ 1710      65642069 
+ 1711              	.LASF8:
+ 1712 0277 756E7369 		.ascii	"unsigned int\000"
+ 1712      676E6564 
+ 1712      20696E74 
+ 1712      00
+ 1713              	.LASF58:
+ 1714 0284 43795379 		.ascii	"CySysWdtSetMode\000"
+ 1714      73576474 
+ 1714      5365744D 
+ 1714      6F646500 
+ 1715              	.LASF24:
+ 1716 0294 426C7565 		.ascii	"Blue_Val\000"
+ 1716      5F56616C 
+ 1716      00
+ 1717              	.LASF37:
+ 1718 029d 6E526573 		.ascii	"nResets\000"
+ARM GAS  C:\Temp\ccolbiUs.s 			page 36
+
+
+ 1718      65747300 
+ 1719              	.LASF56:
+ 1720 02a5 43795379 		.ascii	"CySysWdtResetCounters\000"
+ 1720      73576474 
+ 1720      52657365 
+ 1720      74436F75 
+ 1720      6E746572 
+ 1721              	.LASF29:
+ 1722 02bb 6450756C 		.ascii	"dPulse\000"
+ 1722      736500
+ 1723              	.LASF59:
+ 1724 02c2 43795379 		.ascii	"CySysWdtSetMatch\000"
+ 1724      73576474 
+ 1724      5365744D 
+ 1724      61746368 
+ 1724      00
+ 1725              	.LASF68:
+ 1726 02d3 433A5C55 		.ascii	"C:\\Users\\amdev\\Documents\\PSoC Creator\\RC Recei"
+ 1726      73657273 
+ 1726      5C616D64 
+ 1726      65765C44 
+ 1726      6F63756D 
+ 1727 0301 76657220 		.ascii	"ver Checker\\Design01.cydsn\000"
+ 1727      43686563 
+ 1727      6B65725C 
+ 1727      44657369 
+ 1727      676E3031 
+ 1728              	.LASF13:
+ 1729 031c 63686172 		.ascii	"char\000"
+ 1729      00
+ 1730              	.LASF39:
+ 1731 0321 50574D5F 		.ascii	"PWM_Timer_ReadCapture\000"
+ 1731      54696D65 
+ 1731      725F5265 
+ 1731      61644361 
+ 1731      70747572 
+ 1732              	.LASF53:
+ 1733 0337 5265645F 		.ascii	"Red_Write\000"
+ 1733      57726974 
+ 1733      6500
+ 1734              	.LASF3:
+ 1735 0341 73686F72 		.ascii	"short unsigned int\000"
+ 1735      7420756E 
+ 1735      7369676E 
+ 1735      65642069 
+ 1735      6E7400
+ 1736              	.LASF17:
+ 1737 0354 5F426F6F 		.ascii	"_Bool\000"
+ 1737      6C00
+ 1738              	.LASF21:
+ 1739 035a 64617461 		.ascii	"data\000"
+ 1739      00
+ 1740              	.LASF31:
+ 1741 035f 74416363 		.ascii	"tAccrued\000"
+ 1741      72756564 
+ 1741      00
+ 1742              	.LASF9:
+ARM GAS  C:\Temp\ccolbiUs.s 			page 37
+
+
+ 1743 0368 75696E74 		.ascii	"uint16\000"
+ 1743      313600
+ 1744              	.LASF10:
+ 1745 036f 75696E74 		.ascii	"uint32\000"
+ 1745      333200
+ 1746              	.LASF67:
+ 1747 0376 6D61696E 		.ascii	"main.c\000"
+ 1747      2E6300
+ 1748              	.LASF5:
+ 1749 037d 6C6F6E67 		.ascii	"long unsigned int\000"
+ 1749      20756E73 
+ 1749      69676E65 
+ 1749      6420696E 
+ 1749      7400
+ 1750              	.LASF12:
+ 1751 038f 646F7562 		.ascii	"double\000"
+ 1751      6C6500
+ 1752              	.LASF26:
+ 1753 0396 76626174 		.ascii	"vbat\000"
+ 1753      00
+ 1754              	.LASF27:
+ 1755 039b 70726576 		.ascii	"prevPulse\000"
+ 1755      50756C73 
+ 1755      6500
+ 1756              	.LASF62:
+ 1757 03a5 43795379 		.ascii	"CySysWdtGetEnabledStatus\000"
+ 1757      73576474 
+ 1757      47657445 
+ 1757      6E61626C 
+ 1757      65645374 
+ 1758              	.LASF49:
+ 1759 03be 5744545F 		.ascii	"WDT_ISR_ClearPending\000"
+ 1759      4953525F 
+ 1759      436C6561 
+ 1759      7250656E 
+ 1759      64696E67 
+ 1760              	.LASF22:
+ 1761 03d3 5265645F 		.ascii	"Red_Val\000"
+ 1761      56616C00 
+ 1762              	.LASF44:
+ 1763 03db 4144435F 		.ascii	"ADC_StartConvert\000"
+ 1763      53746172 
+ 1763      74436F6E 
+ 1763      76657274 
+ 1763      00
+ 1764              	.LASF33:
+ 1765 03ec 6C6F775F 		.ascii	"low_time\000"
+ 1765      74696D65 
+ 1765      00
+ 1766              	.LASF57:
+ 1767 03f5 43794465 		.ascii	"CyDelay\000"
+ 1767      6C617900 
+ 1768              	.LASF32:
+ 1769 03fd 666C6174 		.ascii	"flatline\000"
+ 1769      6C696E65 
+ 1769      00
+ 1770              	.LASF28:
+ARM GAS  C:\Temp\ccolbiUs.s 			page 38
+
+
+ 1771 0406 70705075 		.ascii	"ppPulse\000"
+ 1771      6C736500 
+ 1772              	.LASF46:
+ 1773 040e 4144435F 		.ascii	"ADC_GetResult16\000"
+ 1773      47657452 
+ 1773      6573756C 
+ 1773      74313600 
+ 1774              	.LASF64:
+ 1775 041e 50574D5F 		.ascii	"PWM_Timer_Pulse_Start\000"
+ 1775      54696D65 
+ 1775      725F5075 
+ 1775      6C73655F 
+ 1775      53746172 
+ 1776              	.LASF34:
+ 1777 0434 6E746854 		.ascii	"nthTime\000"
+ 1777      696D6500 
+ 1778              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 5.4.1 20160609 (release) [ARM/embedded-5-bran
